@@ -3,6 +3,7 @@ from __future__ import annotations
 from .arbeitsagentur import ArbeitsagenturSource
 from .arbeitnow import ArbeitnowSource
 from .greenhouse import GreenhouseSource
+from .indeed import IndeedSource
 from .lever import LeverSource
 from .linkedin import LinkedInSource
 from .placeholder import PlaceholderSource
@@ -11,6 +12,7 @@ from .remotive import RemotiveSource
 DEFAULT_SOURCES = {
     "agentur": ArbeitsagenturSource,
     "arbeitnow": ArbeitnowSource,
+    "indeed": IndeedSource,
     "linkedin": LinkedInSource,
     "remotive": RemotiveSource,
 }

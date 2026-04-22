@@ -10,6 +10,10 @@ from job_searcher.reporting import SearchReport
 from job_searcher.search import collect_jobs
 from job_searcher.sources.base import JobSource
 from job_searcher.sources.arbeitsagentur import job_detail_url, parse_date
+from job_searcher.sources.indeed import (
+    IndeedJobsParser,
+    canonicalize_job_url as canonicalize_indeed_url,
+)
 from job_searcher.sources.linkedin import (
     LinkedInJobsParser,
     canonicalize_job_url,
@@ -46,6 +50,9 @@ class OfficialLinkTests(unittest.TestCase):
         )
         self.assertFalse(
             is_likely_official_application("https://de.linkedin.com/jobs/view/example-1", "Acme")
+        )
+        self.assertFalse(
+            is_likely_official_application("https://www.indeed.com/viewjob?jk=abc123", "Acme")
         )
 
 
@@ -137,6 +144,30 @@ class SourceMatchingTests(unittest.TestCase):
         parsed = parse_linkedin_date(parser.cards[0].published_at)
         self.assertIsNotNone(parsed)
         self.assertEqual(parsed.year, 2026)
+
+    def test_indeed_card_parser(self) -> None:
+        parser = IndeedJobsParser()
+        parser.feed(
+            """
+            <div class="cardOutline result job_abc123">
+              <h2 class="jobTitle">
+                <a class="jcs-JobTitle" data-jk="abc123" href="/rc/clk?jk=abc123&amp;from=serp">
+                  <span title="Data Analyst" id="jobTitle-abc123">Data Analyst</span>
+                </a>
+              </h2>
+              <span data-testid="company-name">Acme GmbH</span>
+              <div data-testid="text-location">Berlin</div>
+            </div>
+            """
+        )
+        self.assertEqual(len(parser.cards), 1)
+        self.assertEqual(parser.cards[0].title, "Data Analyst")
+        self.assertEqual(parser.cards[0].company, "Acme GmbH")
+        self.assertEqual(parser.cards[0].location, "Berlin")
+        self.assertEqual(
+            canonicalize_indeed_url(parser.cards[0].url),
+            "https://www.indeed.com/viewjob?jk=abc123",
+        )
 
     def test_remotive_match_requires_all_title_terms(self) -> None:
         query = SearchQuery(title="ai engineer")
