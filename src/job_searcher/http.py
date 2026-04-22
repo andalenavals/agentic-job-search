@@ -14,7 +14,7 @@ def fetch_json(url: str, timeout: int = 20) -> object:
         url,
         headers={
             "Accept": "application/json",
-            "User-Agent": "job-searcher/0.1 (+https://github.com/example/job-searcher)",
+            "User-Agent": "agentic-job-search/0.1 (+https://github.com/andalenavals/agentic-job-search)",
         },
     )
     try:

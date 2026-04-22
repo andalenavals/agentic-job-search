@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="job-searcher",
+        prog="agentic-job-search",
         description="Collect likely official application links for job searches.",
     )
     parser.add_argument("--title", required=True, help="Job title or title keywords.")

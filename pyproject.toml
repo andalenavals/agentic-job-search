@@ -1,5 +1,5 @@
 [project]
-name = "job-searcher"
+name = "agentic-job-search"
 version = "0.1.0"
 description = "MVP job search assistant that collects likely official application links."
 readme = "README.md"
@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 dependencies = []
 
 [project.scripts]
-job-searcher = "job_searcher.cli:main"
+agentic-job-search = "job_searcher.cli:main"
 
 [build-system]
 requires = ["hatchling"]

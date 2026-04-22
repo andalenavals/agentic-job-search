@@ -1,4 +1,4 @@
-# job-searcher
+# agentic-job-search
 
 MVP job search automation for collecting job postings and keeping links that look like official application pages.
 
