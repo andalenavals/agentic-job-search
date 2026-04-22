@@ -7,7 +7,6 @@ AGGREGATOR_HOST_PARTS = (
     "glassdoor.",
     "stepstone.",
     "instaffo.",
-    "arbeitsagentur.",
     "indeed.",
     "monster.",
 )
@@ -20,6 +19,7 @@ OFFICIAL_HOST_PARTS = (
     "smartrecruiters.com",
     "personio.de",
     "bamboohr.com",
+    "arbeitsagentur.de",
     "jobs.ashbyhq.com",
     "careers.",
     "jobs.",

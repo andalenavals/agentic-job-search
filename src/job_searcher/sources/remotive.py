@@ -52,13 +52,13 @@ class RemotiveSource(JobSource):
 def parse_iso_datetime(value: object) -> datetime | None:
     if not isinstance(value, str):
         return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def matches_query(title: str, company: str, query: SearchQuery) -> bool:
     haystack = f"{title} {company}".lower()
     title_terms = [term for term in query.title.lower().split() if term]
     return all(term in haystack for term in title_terms)
-    try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return None

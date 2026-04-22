@@ -34,6 +34,14 @@ def main(argv: list[str] | None = None) -> int:
     jobs = collect_jobs(sources, query, report)
     for warning in report.warnings:
         print(f"warning: {warning}", file=sys.stderr)
+    if not jobs and report.filtered_unverified:
+        print(
+            "warning: "
+            f"{report.filtered_unverified} matching posting(s) were found, but their links "
+            "did not look like official company application pages. "
+            "Use --include-unverified to inspect them.",
+            file=sys.stderr,
+        )
     rendered = to_csv(jobs) if args.format == "csv" else to_markdown(jobs)
     if args.output:
         Path(args.output).write_text(rendered, encoding="utf-8")

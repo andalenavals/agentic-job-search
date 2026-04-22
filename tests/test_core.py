@@ -6,9 +6,11 @@ from datetime import datetime, timezone
 from job_searcher.exporters import to_csv, to_markdown
 from job_searcher.models import JobPosting, SearchQuery
 from job_searcher.official_links import is_likely_official_application
+from job_searcher.reporting import SearchReport
 from job_searcher.search import collect_jobs
 from job_searcher.sources.base import JobSource
-from job_searcher.sources.remotive import matches_query
+from job_searcher.sources.arbeitsagentur import job_detail_url, parse_date
+from job_searcher.sources.remotive import matches_query, parse_iso_datetime
 
 
 class StaticSource(JobSource):
@@ -27,6 +29,11 @@ class OfficialLinkTests(unittest.TestCase):
             is_likely_official_application("https://boards.greenhouse.io/acme/jobs/1", "Acme")
         )
         self.assertTrue(is_likely_official_application("https://jobs.lever.co/acme/1", "Acme"))
+        self.assertTrue(
+            is_likely_official_application(
+                "https://www.arbeitsagentur.de/jobsuche/jobdetail/10001-1-S", "Acme"
+            )
+        )
 
     def test_rejects_aggregator_links(self) -> None:
         self.assertFalse(
@@ -40,8 +47,12 @@ class SearchTests(unittest.TestCase):
             JobPosting("Engineer", "Acme", "Berlin", "test", "https://linkedin.com/jobs/view/1"),
             JobPosting("Engineer", "Acme", "Berlin", "test", "https://jobs.lever.co/acme/1"),
         ]
-        results = collect_jobs([StaticSource(jobs)], SearchQuery(title="Engineer"))
+        report = SearchReport()
+        results = collect_jobs([StaticSource(jobs)], SearchQuery(title="Engineer"), report)
         self.assertEqual([job.best_url for job in results], ["https://jobs.lever.co/acme/1"])
+        self.assertEqual(report.seen, 2)
+        self.assertEqual(report.accepted, 1)
+        self.assertEqual(report.filtered_unverified, 1)
 
     def test_can_include_unverified_links(self) -> None:
         jobs = [
@@ -81,10 +92,24 @@ class ExportTests(unittest.TestCase):
 
 
 class SourceMatchingTests(unittest.TestCase):
+    def test_arbeitsagentur_helpers(self) -> None:
+        self.assertEqual(
+            job_detail_url("10001-1002774853-S"),
+            "https://www.arbeitsagentur.de/jobsuche/jobdetail/10001-1002774853-S",
+        )
+        parsed = parse_date("2026-03-17")
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed.year, 2026)
+
     def test_remotive_match_requires_all_title_terms(self) -> None:
         query = SearchQuery(title="ai engineer")
         self.assertTrue(matches_query("Senior AI Engineer", "Acme", query))
         self.assertFalse(matches_query("Customer Support", "Acme", query))
+
+    def test_remotive_iso_dates_parse(self) -> None:
+        parsed = parse_iso_datetime("2026-04-22T10:30:00Z")
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed.year, 2026)
 
 
 if __name__ == "__main__":

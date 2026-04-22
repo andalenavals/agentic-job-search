@@ -16,6 +16,7 @@ Implemented:
 - Command line interface.
 - Connector architecture for multiple job engines.
 - Public-source connectors:
+  - Bundesagentur fuer Arbeit public search API.
   - Arbeitnow public API.
   - Remotive public API.
   - Greenhouse company boards when company tokens are provided.
@@ -71,7 +72,6 @@ Some engines named in the product idea are intentionally placeholders in the MVP
 - LinkedIn
 - StepStone
 - Instaffo
-- Agentur fuer Arbeit
 - Glassdoor
 
 These sites often require JavaScript, login, strict terms, or official APIs. The project should add compliant connectors source by source instead of relying on fragile scraping.

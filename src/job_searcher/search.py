@@ -15,15 +15,23 @@ def collect_jobs(
     results: list[JobPosting] = []
     for source in sources:
         for job in source.search(query, report):
+            if report:
+                report.seen += 1
             if not job.best_url or job.best_url in seen_urls:
+                if report:
+                    report.filtered_duplicates += 1
                 continue
             if (
                 not query.include_unverified
                 and not is_likely_official_application(job.best_url, job.company)
             ):
+                if report:
+                    report.filtered_unverified += 1
                 continue
             seen_urls.add(job.best_url)
             results.append(job)
+            if report:
+                report.accepted += 1
             if len(results) >= query.limit:
                 return sort_jobs(results)
     return sort_jobs(results)

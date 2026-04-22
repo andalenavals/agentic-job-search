@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .arbeitsagentur import ArbeitsagenturSource
 from .arbeitnow import ArbeitnowSource
 from .greenhouse import GreenhouseSource
 from .lever import LeverSource
@@ -7,6 +8,7 @@ from .placeholder import PlaceholderSource
 from .remotive import RemotiveSource
 
 DEFAULT_SOURCES = {
+    "agentur": ArbeitsagenturSource,
     "arbeitnow": ArbeitnowSource,
     "remotive": RemotiveSource,
 }
@@ -20,7 +22,6 @@ PLACEHOLDER_SOURCES = {
     "linkedin": "Requires compliant API/browser implementation; direct scraping is not included.",
     "stepstone": "Requires compliant API/browser implementation; direct scraping is not included.",
     "instaffo": "Requires compliant API/browser implementation; direct scraping is not included.",
-    "agentur": "Official API integration should be added with credentials/config.",
     "glassdoor": "Requires compliant API/browser implementation; direct scraping is not included.",
 }
 
