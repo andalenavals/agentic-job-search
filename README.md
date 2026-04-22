@@ -18,10 +18,11 @@ Implemented:
 - Public-source connectors:
   - Bundesagentur fuer Arbeit public search API.
   - Arbeitnow public API.
+  - LinkedIn public guest job cards as experimental, unverified source links.
   - Remotive public API.
   - Greenhouse company boards when company tokens are provided.
   - Lever company boards when company tokens are provided.
-- Placeholder connectors for LinkedIn, StepStone, Instaffo, Agentur fuer Arbeit, and Glassdoor.
+- Placeholder connectors for StepStone, Instaffo, and Glassdoor.
 - Official application link heuristics.
 - Markdown and CSV output.
 
@@ -69,12 +70,17 @@ PYTHONPATH=src python3 -m job_searcher --title "engineer" --include-unverified
 
 Some engines named in the product idea are intentionally placeholders in the MVP:
 
-- LinkedIn
 - StepStone
 - Instaffo
 - Glassdoor
 
 These sites often require JavaScript, login, strict terms, or official APIs. The project should add compliant connectors source by source instead of relying on fragile scraping.
+
+LinkedIn is currently experimental. The connector reads public guest job cards and returns LinkedIn job URLs, not verified company ATS links. In strict mode, these results are filtered out. Use `--include-unverified` to inspect them:
+
+```bash
+PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --source linkedin --include-unverified
+```
 
 ## Development
 

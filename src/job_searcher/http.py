@@ -10,6 +10,13 @@ class FetchError(RuntimeError):
 
 
 def fetch_json(url: str, timeout: int = 20, headers: dict[str, str] | None = None) -> object:
+    try:
+        return json.loads(fetch_text(url, timeout, headers))
+    except json.JSONDecodeError as exc:
+        raise FetchError(f"Could not parse JSON from {url}: {exc}") from exc
+
+
+def fetch_text(url: str, timeout: int = 20, headers: dict[str, str] | None = None) -> str:
     request_headers = {
         "Accept": "application/json",
         "User-Agent": "agentic-job-search/0.1 (+https://github.com/andalenavals/agentic-job-search)",
@@ -23,6 +30,6 @@ def fetch_json(url: str, timeout: int = 20, headers: dict[str, str] | None = Non
     try:
         with urlopen(request, timeout=timeout) as response:
             charset = response.headers.get_content_charset() or "utf-8"
-            return json.loads(response.read().decode(charset))
-    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+            return response.read().decode(charset)
+    except (HTTPError, URLError, TimeoutError) as exc:
         raise FetchError(f"Could not fetch {url}: {exc}") from exc

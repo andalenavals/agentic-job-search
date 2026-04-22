@@ -10,6 +10,11 @@ from job_searcher.reporting import SearchReport
 from job_searcher.search import collect_jobs
 from job_searcher.sources.base import JobSource
 from job_searcher.sources.arbeitsagentur import job_detail_url, parse_date
+from job_searcher.sources.linkedin import (
+    LinkedInJobsParser,
+    canonicalize_job_url,
+    parse_date as parse_linkedin_date,
+)
 from job_searcher.sources.remotive import matches_query, parse_iso_datetime
 
 
@@ -38,6 +43,9 @@ class OfficialLinkTests(unittest.TestCase):
     def test_rejects_aggregator_links(self) -> None:
         self.assertFalse(
             is_likely_official_application("https://www.linkedin.com/jobs/view/1", "Acme")
+        )
+        self.assertFalse(
+            is_likely_official_application("https://de.linkedin.com/jobs/view/example-1", "Acme")
         )
 
 
@@ -98,6 +106,35 @@ class SourceMatchingTests(unittest.TestCase):
             "https://www.arbeitsagentur.de/jobsuche/jobdetail/10001-1002774853-S",
         )
         parsed = parse_date("2026-03-17")
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed.year, 2026)
+
+    def test_linkedin_card_parser(self) -> None:
+        parser = LinkedInJobsParser()
+        parser.feed(
+            """
+            <div class="base-card job-search-card">
+              <a class="base-card__full-link" href="https://de.linkedin.com/jobs/view/x-123?position=1&amp;pageNum=0">
+                <span class="sr-only">Ignored</span>
+              </a>
+              <h3 class="base-search-card__title">Data Analyst</h3>
+              <h4 class="base-search-card__subtitle">
+                <a class="hidden-nested-link">Acme GmbH</a>
+              </h4>
+              <span class="job-search-card__location">Berlin, Germany</span>
+              <time class="job-search-card__listdate" datetime="2026-04-22">today</time>
+            </div>
+            """
+        )
+        self.assertEqual(len(parser.cards), 1)
+        self.assertEqual(parser.cards[0].title, "Data Analyst")
+        self.assertEqual(parser.cards[0].company, "Acme GmbH")
+        self.assertEqual(parser.cards[0].location, "Berlin, Germany")
+        self.assertEqual(
+            canonicalize_job_url(parser.cards[0].url),
+            "https://de.linkedin.com/jobs/view/x-123",
+        )
+        parsed = parse_linkedin_date(parser.cards[0].published_at)
         self.assertIsNotNone(parsed)
         self.assertEqual(parsed.year, 2026)
 
