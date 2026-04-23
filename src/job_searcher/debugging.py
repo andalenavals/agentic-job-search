@@ -6,6 +6,7 @@ from html.parser import HTMLParser
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from job_searcher.matching import MatchResult, ProfileMatcher
 from job_searcher.models import JobPosting, SearchQuery
 from job_searcher.official_links import is_likely_official_application
 from job_searcher.reporting import SearchReport
@@ -235,6 +236,7 @@ def debug_report_to_flat_markdown(
     results: list[SourceDebugResult],
     title: str,
     per_source_limit: int,
+    profile_matcher: ProfileMatcher | None = None,
 ) -> str:
     total_links = sum(len(result.jobs) for result in results)
     lines = [
@@ -256,33 +258,24 @@ def debug_report_to_flat_markdown(
             lines.append(f"- `{escape_md(source)}`: {escape_md(warning)}")
         lines.append("")
 
-    lines.extend(
-        [
-            "## Concatenated Results",
-            "",
-            "| Source | Verdict | Status | Official | Title Found | Job | Company | Description | Final Link |",
-            "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
-        ]
-    )
+    lines.extend(["## Concatenated Results", ""])
+    header = ["Source", "Verdict", "Status", "Official", "Title Found", "Job", "Company"]
+    if profile_matcher:
+        header.extend(["Semantic Match", "LLM Match"])
+    header.extend(["Description", "Final Link"])
+    lines.append("| " + " | ".join(header) + " |")
+    lines.append("| " + " | ".join("---" for _ in header) + " |")
+    job_rows: list[tuple[float, int, str]] = []
+    empty_rows: list[str] = []
+    row_index = 0
     for result in results:
         if not result.jobs:
-            lines.append(
+            empty_row = (
                 "| "
-                + " | ".join(
-                    [
-                        escape_md(result.source),
-                        "no-links",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                    ]
-                )
+                + " | ".join([escape_md(result.source), "no-links", *[""] * (len(header) - 2)])
                 + " |"
             )
+            empty_rows.append(empty_row)
             continue
         for debugged in result.jobs:
             job = debugged.job
@@ -291,7 +284,14 @@ def debug_report_to_flat_markdown(
             if verification.error:
                 status = f"{status} {verification.error}".strip()
             final_url = verification.final_url or verification.url
-            lines.append(
+            description = description_for_report(job, verification)
+            match_columns: list[str] = []
+            sort_score = 0.0
+            if profile_matcher:
+                match = profile_matcher.score(job.title, job.company, description)
+                sort_score = match.sort_score
+                match_columns = [format_semantic_match(match), format_llm_match(match)]
+            row = (
                 "| "
                 + " | ".join(
                     [
@@ -302,14 +302,33 @@ def debug_report_to_flat_markdown(
                         yes_no(verification.title_found),
                         escape_md(job.title),
                         escape_md(job.company),
-                        escape_md(description_for_report(job, verification)),
+                        *match_columns,
+                        escape_md(description),
                         f"[open]({final_url})",
                     ]
                 )
                 + " |"
             )
+            job_rows.append((sort_score, row_index, row))
+            row_index += 1
+    if profile_matcher:
+        job_rows.sort(key=lambda item: (item[0], -item[1]), reverse=True)
+    lines.extend(row for _, _, row in job_rows)
+    lines.extend(empty_rows)
     lines.append("")
     return "\n".join(lines)
+
+
+def format_semantic_match(match: MatchResult) -> str:
+    return f"{match.semantic_score:.1f}/100"
+
+
+def format_llm_match(match: MatchResult) -> str:
+    if match.llm_score is None:
+        return escape_md(match.llm_error or "not-run")
+    if match.llm_reason:
+        return escape_md(f"{match.llm_score}/100 - {match.llm_reason}")
+    return f"{match.llm_score}/100"
 
 
 def description_for_report(job: JobPosting, verification: LinkVerification) -> str:

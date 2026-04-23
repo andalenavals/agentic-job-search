@@ -20,6 +20,7 @@ from job_searcher.debugging import (
 )
 from job_searcher.cli import normalize_location, normalize_source_names
 from job_searcher.exporters import to_csv, to_markdown
+from job_searcher.matching import ProfileMatcher, parse_llm_match_response, semantic_match_score
 from job_searcher.models import JobPosting, SearchQuery
 from job_searcher.official_links import is_likely_official_application
 from job_searcher.reporting import SearchReport
@@ -448,6 +449,57 @@ class DebuggingTests(unittest.TestCase):
             report,
         )
 
+    def test_flat_debug_report_sorts_by_profile_match(self) -> None:
+        python_job = JobPosting(
+            "Data Engineer",
+            "Acme",
+            "Berlin",
+            "test",
+            "https://jobs.lever.co/acme/1",
+            description="Build Python SQL data pipelines and analytics models.",
+        )
+        sales_job = JobPosting(
+            "Sales Manager",
+            "Beta",
+            "Berlin",
+            "test",
+            "https://jobs.lever.co/beta/1",
+            description="Lead enterprise sales calls and account planning.",
+        )
+        verification = build_verification(
+            "https://x",
+            "https://x",
+            True,
+            200,
+            "text/html",
+            True,
+            True,
+        )
+        report = debug_report_to_flat_markdown(
+            [
+                SourceDebugResult(
+                    source="test",
+                    warnings=(),
+                    jobs=(
+                        DebuggedJob(job=sales_job, verification=verification),
+                        DebuggedJob(job=python_job, verification=verification),
+                    ),
+                )
+            ],
+            title="Data",
+            per_source_limit=5,
+            profile_matcher=ProfileMatcher(
+                "Data engineer with Python, SQL, analytics, and machine learning experience.",
+                ollama_model=None,
+            ),
+        )
+        self.assertIn(
+            "| Source | Verdict | Status | Official | Title Found | Job | Company | Semantic Match | LLM Match | Description | Final Link |",
+            report,
+        )
+        self.assertLess(report.index("Data Engineer"), report.index("Sales Manager"))
+        self.assertIn("not-run", report)
+
     def test_description_helpers(self) -> None:
         html = """
         <html>
@@ -486,6 +538,19 @@ class DebuggingTests(unittest.TestCase):
         self.assertEqual(description_for_report(described_job, verification), "Source description")
         self.assertEqual(compact_description("x" * 10, max_chars=5), "xxxx…")
         self.assertEqual(html_to_text("<p>Hello <strong>Data</strong></p>"), "Hello Data")
+
+    def test_matching_helpers(self) -> None:
+        self.assertGreater(
+            semantic_match_score(
+                "Python SQL data analyst",
+                "Data analyst role using Python and SQL dashboards.",
+            ),
+            semantic_match_score("Python SQL data analyst", "Retail store manager."),
+        )
+        self.assertEqual(
+            parse_llm_match_response('<think>hidden</think>{"score": 88, "reason": "Strong data fit"}'),
+            (88, "Strong data fit", ""),
+        )
 
     def test_verification_verdicts(self) -> None:
         self.assertEqual(

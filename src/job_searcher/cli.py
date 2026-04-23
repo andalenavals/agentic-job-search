@@ -4,8 +4,13 @@ import argparse
 import sys
 from pathlib import Path
 
-from job_searcher.debugging import debug_report_to_markdown, debug_sources
+from job_searcher.debugging import (
+    debug_report_to_flat_markdown,
+    debug_report_to_markdown,
+    debug_sources,
+)
 from job_searcher.exporters import to_csv, to_markdown
+from job_searcher.matching import ProfileMatcher
 from job_searcher.models import SearchQuery
 from job_searcher.reporting import SearchReport
 from job_searcher.search import collect_jobs
@@ -48,13 +53,31 @@ def main(argv: list[str] | None = None) -> int:
         workday_sites=tuple(args.workday),
     )
     if args.debug_links:
+        profile = load_profile(args.profile, args.profile_file)
+        profile_matcher = (
+            ProfileMatcher(
+                profile,
+                ollama_model=None if args.no_llm_match else args.ollama_model,
+                timeout=args.match_timeout,
+            )
+            if profile
+            else None
+        )
         results = debug_sources(
             sources,
             query,
             per_source_limit=args.debug_limit,
             timeout=args.debug_timeout,
         )
-        rendered = debug_report_to_markdown(results)
+        if profile_matcher:
+            rendered = debug_report_to_flat_markdown(
+                results,
+                title=args.title,
+                per_source_limit=args.debug_limit,
+                profile_matcher=profile_matcher,
+            )
+        else:
+            rendered = debug_report_to_markdown(results)
         if args.output:
             Path(args.output).write_text(rendered, encoding="utf-8")
         else:
@@ -114,6 +137,30 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=10,
         help="Seconds to wait while verifying each debug link.",
+    )
+    parser.add_argument(
+        "--profile",
+        help="Candidate profile text used to rank debug report jobs by fit.",
+    )
+    parser.add_argument(
+        "--profile-file",
+        help="Path to a text file containing the candidate profile used to rank debug report jobs by fit.",
+    )
+    parser.add_argument(
+        "--ollama-model",
+        default="deepseek-r1:latest",
+        help="Ollama model for LLM job/profile matching in --debug-links mode.",
+    )
+    parser.add_argument(
+        "--no-llm-match",
+        action="store_true",
+        help="Skip Ollama matching and only compute the simple semantic match.",
+    )
+    parser.add_argument(
+        "--match-timeout",
+        type=int,
+        default=30,
+        help="Seconds to wait for each Ollama match request.",
     )
     parser.add_argument(
         "--source",
@@ -179,6 +226,15 @@ def normalize_location(location: str | None) -> str | None:
     if location and location.strip().lower() == ALL_LOCATIONS:
         return None
     return location
+
+
+def load_profile(profile: str | None, profile_file: str | None) -> str:
+    values = []
+    if profile:
+        values.append(profile)
+    if profile_file:
+        values.append(Path(profile_file).read_text(encoding="utf-8"))
+    return "\n\n".join(value.strip() for value in values if value.strip())
 
 
 if __name__ == "__main__":

@@ -105,6 +105,18 @@ Run the repeatable gold test across all selectable sources with title `Data`, no
 PYTHONPATH=src python3 scripts/gold_test.py
 ```
 
+Rank the concatenated gold-test results against a candidate profile. This adds `Semantic Match` and `LLM Match` columns to the report and sorts the job rows by fit. The LLM score uses a local Ollama model by default; use `--no-llm-match` when Ollama is not running or when you only want the simple semantic score:
+
+```bash
+PYTHONPATH=src python3 scripts/gold_test.py \
+  --profile-file profile.txt \
+  --ollama-model deepseek-r1:latest
+
+PYTHONPATH=src python3 scripts/gold_test.py \
+  --profile "Data analyst with Python, SQL, dashboards, and machine learning experience" \
+  --no-llm-match
+```
+
 ## Source Notes
 
 Some engines named in the product idea are intentionally placeholders in the MVP:
