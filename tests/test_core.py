@@ -30,7 +30,13 @@ from job_searcher.sources.berlin_startup_jobs import (
     BerlinStartupJobsParser,
     canonicalize_job_url as canonicalize_berlin_startup_jobs_url,
 )
-from job_searcher.sources.bund_de import BundDeJobsParser
+from job_searcher.sources.bund_de import (
+    BundDeJobsParser,
+    canonicalize_job_url as canonicalize_bund_de_url,
+    clean_result_title as clean_bund_de_title,
+    company_from_result_text as bund_de_company_from_result_text,
+    search_url as bund_de_search_url,
+)
 from job_searcher.sources.experis import (
     ExperisJobsParser,
     canonicalize_job_url as canonicalize_experis_url,
@@ -49,6 +55,7 @@ from job_searcher.sources.indeed import (
     IndeedJobsParser,
     canonicalize_job_url as canonicalize_indeed_url,
 )
+from job_searcher.sources.interamt import InteramtJobsParser, is_job_href as interamt_is_job_href
 from job_searcher.sources.karriere_nrw import (
     matches_query as karriere_nrw_matches_query,
     public_job_url as karriere_nrw_public_job_url,
@@ -87,6 +94,8 @@ from job_searcher.sources.workday import (
 from job_searcher.sources.xing import (
     XingJobsParser,
     canonicalize_job_url as canonicalize_xing_url,
+    is_job_href as xing_is_job_href,
+    is_navigation_title as xing_is_navigation_title,
     search_url as xing_search_url,
 )
 
@@ -464,7 +473,13 @@ class SourceMatchingTests(unittest.TestCase):
 
     def test_xing_parser_and_url(self) -> None:
         parser = XingJobsParser()
-        parser.feed('<a href="/jobs/berlin-data-analyst-123">Data Analyst</a>')
+        parser.feed(
+            """
+            <a href="/jobs/search/ki">Suche</a>
+            <a href="/jobs/directory/a">Jobs Verzeichnis</a>
+            <a href="/jobs/berlin-data-analyst-123">Data Analyst</a>
+            """
+        )
         self.assertEqual(len(parser.cards), 1)
         self.assertEqual(parser.cards[0].title, "Data Analyst")
         self.assertEqual(
@@ -475,12 +490,15 @@ class SourceMatchingTests(unittest.TestCase):
             xing_search_url(SearchQuery(title="data analyst", location="Berlin")),
             "https://www.xing.com/jobs/berlin-data-analyst",
         )
+        self.assertTrue(xing_is_job_href("/jobs/berlin-data-analyst-123"))
+        self.assertFalse(xing_is_job_href("/jobs/search/ki"))
+        self.assertTrue(xing_is_navigation_title("Job posten"))
 
     def test_bund_de_parser(self) -> None:
         parser = BundDeJobsParser()
         parser.feed(
             """
-            <a href="/Content/DE/Stellenangebote/abc.html">
+            <a href="IMPORTE/Stellenangebote/editor/example/abc.html;jsessionid=123?templateQueryString=Data">
               Data Analyst im Bundesdienst
             </a>
             """
@@ -489,8 +507,40 @@ class SourceMatchingTests(unittest.TestCase):
         self.assertEqual(parser.cards[0].title, "Data Analyst im Bundesdienst")
         self.assertEqual(
             parser.cards[0].url,
-            "https://www.service.bund.de/Content/DE/Stellenangebote/abc.html",
+            "https://www.service.bund.de/IMPORTE/Stellenangebote/editor/example/abc.html;jsessionid=123?templateQueryString=Data",
         )
+        self.assertEqual(
+            canonicalize_bund_de_url(parser.cards[0].url),
+            "https://www.service.bund.de/IMPORTE/Stellenangebote/editor/example/abc.html",
+        )
+        self.assertEqual(
+            bund_de_search_url(SearchQuery(title="Data")),
+            "https://www.service.bund.de/Content/DE/Stellen/Suche/Formular.html?nn=4642046&type=0&searchResult=true&templateQueryString=Data",
+        )
+        raw_title = (
+            "Stellenbezeichnung Data Scientist Arbeitgeber Bundesamt "
+            "Veröffentlicht 23.04.26 Bewerbungsfrist 24.05.26"
+        )
+        self.assertEqual(clean_bund_de_title(raw_title), "Data Scientist")
+        self.assertEqual(bund_de_company_from_result_text(raw_title), "Bundesamt")
+
+    def test_interamt_parser(self) -> None:
+        parser = InteramtJobsParser()
+        parser.feed(
+            """
+            <a href="./stellensuche?0">Stellensuche</a>
+            <a href="/cms/Hilfe/200_Hilfe_Stellensuche_Suchmaske.html">Hilfe</a>
+            <a href="./stellenangebot/123">Data Scientist</a>
+            """
+        )
+        self.assertEqual(len(parser.cards), 1)
+        self.assertEqual(parser.cards[0].title, "Data Scientist")
+        self.assertEqual(
+            parser.cards[0].url,
+            "https://interamt.de/stellenangebot/123",
+        )
+        self.assertTrue(interamt_is_job_href("./stellenangebot/123"))
+        self.assertFalse(interamt_is_job_href("./stellensuche?0"))
 
     def test_ashby_helpers(self) -> None:
         payload = {
@@ -661,6 +711,8 @@ class SourceMatchingTests(unittest.TestCase):
             remote_com_search_url(SearchQuery(title="data analyst")),
             "https://remote.com/jobs/types-of-remote-jobs/remote-data-analyst-jobs",
         )
+        with self.assertRaisesRegex(ValueError, "Could not find Remote.com jobsData payload"):
+            extract_remote_com_jobs("<html>No embedded jobs</html>")
 
     def test_stepstone_card_parser(self) -> None:
         parser = StepStoneJobsParser()

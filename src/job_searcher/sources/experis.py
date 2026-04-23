@@ -27,6 +27,8 @@ class ExperisSource(JobSource):
                 },
             )
         except FetchError as exc:
+            if "HTTP Error 404" in str(exc):
+                return ()
             if report:
                 report.warn(f"Skipped {self.name}: {exc}")
             return ()

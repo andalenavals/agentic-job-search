@@ -33,6 +33,8 @@ class RemoteComSource(JobSource):
         try:
             jobs = extract_jobs(html)
         except ValueError as exc:
+            if "Could not find Remote.com jobsData payload" in str(exc):
+                return ()
             if report:
                 report.warn(f"Skipped {self.name}: {exc}")
             return ()

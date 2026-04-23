@@ -58,7 +58,7 @@ class XingJobsParser(HTMLParser):
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attrs_dict = dict(attrs)
         href = attrs_dict.get("href") or ""
-        if tag == "a" and "/jobs/" in href and not href.rstrip("/").endswith("/jobs"):
+        if tag == "a" and is_job_href(href):
             self._current_url = urljoin(self.base_url, href)
             self._capture_title = True
             self._chunks = []
@@ -72,7 +72,7 @@ class XingJobsParser(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag == "a" and self._capture_title:
             title = " ".join(" ".join(self._chunks).split())
-            if title and self._current_url:
+            if title and self._current_url and not is_navigation_title(title):
                 if all(card.url != self._current_url for card in self.cards):
                     self.cards.append(XingJobCard(title=title, url=self._current_url))
             self._current_url = ""
@@ -94,3 +94,31 @@ def slugify(value: str) -> str:
 def canonicalize_job_url(url: str) -> str:
     parsed = urlsplit(url)
     return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
+
+
+def is_job_href(href: str) -> bool:
+    parsed = urlsplit(href)
+    path = parsed.path
+    if not path.startswith("/jobs/"):
+        return False
+    excluded_prefixes = (
+        "/jobs/search",
+        "/jobs/directory",
+        "/jobs/pricing",
+        "/jobs/sign-",
+        "/jobs/c/",
+        "/jobs/types-of-remote-jobs",
+    )
+    return not any(path.startswith(prefix) for prefix in excluded_prefixes)
+
+
+def is_navigation_title(title: str) -> bool:
+    return title.strip().lower() in {
+        "suche",
+        "job posten",
+        "jobs verzeichnis",
+        "stellenanzeige schalten",
+        "pricing",
+        "sign up",
+        "log in",
+    }
