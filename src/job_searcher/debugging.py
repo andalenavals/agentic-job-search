@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from html.parser import HTMLParser
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -22,6 +23,7 @@ class LinkVerification:
     title_found: bool
     verdict: str
     error: str = ""
+    description: str = ""
 
 
 @dataclass(frozen=True)
@@ -124,6 +126,7 @@ def verify_job_link(job: JobPosting, query: SearchQuery, timeout: int = 10) -> L
         content_type=content_type,
         official_like=official_url(url, final_url, job.company),
         title_found=content_mentions_job(text, job, query),
+        description=extract_page_description(text),
     )
 
 
@@ -136,6 +139,7 @@ def build_verification(
     official_like: bool,
     title_found: bool,
     error: str = "",
+    description: str = "",
 ) -> LinkVerification:
     if not reachable:
         verdict = "missing"
@@ -157,6 +161,7 @@ def build_verification(
         title_found=title_found,
         verdict=verdict,
         error=error,
+        description=description,
     )
 
 
@@ -255,8 +260,8 @@ def debug_report_to_flat_markdown(
         [
             "## Concatenated Results",
             "",
-            "| Source | Verdict | Status | Official | Title Found | Job | Company | Final Link |",
-            "| --- | --- | --- | --- | --- | --- | --- | --- |",
+            "| Source | Verdict | Status | Official | Title Found | Job | Company | Description | Final Link |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
         ]
     )
     for result in results:
@@ -267,6 +272,7 @@ def debug_report_to_flat_markdown(
                     [
                         escape_md(result.source),
                         "no-links",
+                        "",
                         "",
                         "",
                         "",
@@ -296,6 +302,7 @@ def debug_report_to_flat_markdown(
                         yes_no(verification.title_found),
                         escape_md(job.title),
                         escape_md(job.company),
+                        escape_md(description_for_report(job, verification)),
                         f"[open]({final_url})",
                     ]
                 )
@@ -303,6 +310,59 @@ def debug_report_to_flat_markdown(
             )
     lines.append("")
     return "\n".join(lines)
+
+
+def description_for_report(job: JobPosting, verification: LinkVerification) -> str:
+    if job.description:
+        return compact_description(html_to_text(job.description))
+    return compact_description(verification.description)
+
+
+def html_to_text(value: str) -> str:
+    if "<" not in value or ">" not in value:
+        return value
+    parser = DescriptionTextParser()
+    parser.feed(value)
+    return " ".join(parser.chunks)
+
+
+def compact_description(value: str | None, max_chars: int = 4000) -> str:
+    if not value:
+        return ""
+    compacted = " ".join(value.split())
+    if len(compacted) <= max_chars:
+        return compacted
+    return compacted[: max_chars - 1].rstrip() + "…"
+
+
+def extract_page_description(html: str) -> str:
+    parser = DescriptionTextParser()
+    parser.feed(html)
+    return compact_description(" ".join(parser.chunks))
+
+
+class DescriptionTextParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.chunks: list[str] = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in {"script", "style", "noscript", "svg"}:
+            self._skip_depth += 1
+        elif tag in {"p", "li", "div", "section", "br", "h1", "h2", "h3"} and self.chunks:
+            self.chunks.append(" ")
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth:
+            return
+        value = data.strip()
+        if value:
+            self.chunks.append(value)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"script", "style", "noscript", "svg"} and self._skip_depth:
+            self._skip_depth -= 1
 
 
 def yes_no(value: bool) -> str:

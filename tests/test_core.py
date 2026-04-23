@@ -8,10 +8,14 @@ from job_searcher.debugging import (
     LinkVerification,
     SourceDebugResult,
     build_verification,
+    compact_description,
     content_mentions_job,
     debug_report_to_markdown,
     debug_report_to_flat_markdown,
     debug_sources,
+    description_for_report,
+    extract_page_description,
+    html_to_text,
     source_label,
 )
 from job_searcher.cli import normalize_location, normalize_source_names
@@ -405,7 +409,14 @@ class DebuggingTests(unittest.TestCase):
         self.assertIn("[open](https://jobs.lever.co/acme/1)", report)
 
     def test_flat_debug_report_markdown(self) -> None:
-        job = JobPosting("Data Analyst", "Acme", "Berlin", "test", "https://jobs.lever.co/acme/1")
+        job = JobPosting(
+            "Data Analyst",
+            "Acme",
+            "Berlin",
+            "test",
+            "https://jobs.lever.co/acme/1",
+            description="Analyze customer data and build dashboards.",
+        )
         verification = build_verification(
             url=job.best_url,
             final_url=job.best_url,
@@ -427,7 +438,54 @@ class DebuggingTests(unittest.TestCase):
             per_source_limit=5,
         )
         self.assertIn("# Job Search Gold Test", report)
-        self.assertIn("| test | verified | 200 | yes | yes | Data Analyst | Acme |", report)
+        self.assertIn(
+            "| test | verified | 200 | yes | yes | Data Analyst | Acme | "
+            "Analyze customer data and build dashboards. |",
+            report,
+        )
+        self.assertIn(
+            "| Source | Verdict | Status | Official | Title Found | Job | Company | Description | Final Link |",
+            report,
+        )
+
+    def test_description_helpers(self) -> None:
+        html = """
+        <html>
+          <head><style>.hidden{}</style><script>ignored()</script></head>
+          <body>
+            <h1>Data Analyst</h1>
+            <p>Analyze customer data.</p>
+            <li>Build dashboards.</li>
+          </body>
+        </html>
+        """
+        self.assertEqual(
+            extract_page_description(html),
+            "Data Analyst Analyze customer data. Build dashboards.",
+        )
+        verification = build_verification(
+            "https://x",
+            "https://x",
+            True,
+            200,
+            "text/html",
+            True,
+            True,
+            description="Fetched page description",
+        )
+        job = JobPosting("Data Analyst", "Acme", "Berlin", "test", "https://x")
+        self.assertEqual(description_for_report(job, verification), "Fetched page description")
+        described_job = JobPosting(
+            "Data Analyst",
+            "Acme",
+            "Berlin",
+            "test",
+            "https://x",
+            description="Source description",
+        )
+        self.assertEqual(description_for_report(described_job, verification), "Source description")
+        self.assertEqual(compact_description("x" * 10, max_chars=5), "xxxx…")
+        self.assertEqual(html_to_text("<p>Hello <strong>Data</strong></p>"), "Hello Data")
 
     def test_verification_verdicts(self) -> None:
         self.assertEqual(
