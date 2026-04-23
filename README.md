@@ -99,21 +99,42 @@ PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin 
 PYTHONPATH=src python3 -m job_searcher --title "data analyst" --source linkedin --debug-links --debug-limit 5
 ```
 
-Run the repeatable gold test across all selectable sources with title `Data`, no location filter, five links per source, and live link verification:
+Run the repeatable all-sources debug report across selectable sources with title `Data`, no location filter, five links per source, and live link verification:
 
 ```bash
-PYTHONPATH=src python3 scripts/gold_test.py
+PYTHONPATH=src python3 -m job_searcher \
+  --title Data \
+  --location all \
+  --source all \
+  --include-unverified \
+  --debug-links \
+  --debug-limit 5 \
+  --output reports/gold-test-data.md
 ```
 
-Rank the concatenated gold-test results against a candidate profile. This adds `Semantic Match` and `LLM Match` columns to the report and sorts the job rows by fit. The LLM score uses a local Ollama model by default; use `--no-llm-match` when Ollama is not running or when you only want the simple semantic score:
+Rank the concatenated debug results against a candidate profile. This adds `Semantic Match` and `LLM Match` columns to the report and sorts the job rows by fit. The LLM score uses a local Ollama model by default; use `--no-llm-match` when Ollama is not running or when you only want the simple semantic score:
 
 ```bash
-PYTHONPATH=src python3 scripts/gold_test.py \
+PYTHONPATH=src python3 -m job_searcher \
+  --title Data \
+  --location all \
+  --source all \
+  --include-unverified \
+  --debug-links \
+  --debug-limit 5 \
   --profile-file profile.txt \
+  --output reports/gold-test-data.md \
   --ollama-model deepseek-r1:latest
 
-PYTHONPATH=src python3 scripts/gold_test.py \
+PYTHONPATH=src python3 -m job_searcher \
+  --title Data \
+  --location all \
+  --source all \
+  --include-unverified \
+  --debug-links \
+  --debug-limit 5 \
   --profile "Data analyst with Python, SQL, dashboards, and machine learning experience" \
+  --output reports/gold-test-data.md \
   --no-llm-match
 ```
 
@@ -126,8 +147,15 @@ export JOB_SEARCH_SMTP_USER=andres@example.com
 export JOB_SEARCH_SMTP_PASSWORD=app-password
 export JOB_SEARCH_EMAIL_FROM=andres@example.com
 
-PYTHONPATH=src python3 scripts/gold_test.py \
+PYTHONPATH=src python3 -m job_searcher \
+  --title Data \
+  --location all \
+  --source all \
+  --include-unverified \
+  --debug-links \
+  --debug-limit 5 \
   --profile-file profile.txt \
+  --output reports/gold-test-data.md \
   --no-llm-match \
   --email-to hiring-digest@example.com \
   --email-top 5 \
