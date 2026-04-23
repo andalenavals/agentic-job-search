@@ -17,7 +17,15 @@ def main(argv: list[str] | None = None) -> int:
 
     source_names = args.source or list(DEFAULT_SOURCE_NAMES)
     try:
-        sources = build_sources(source_names, tuple(args.greenhouse), tuple(args.lever))
+        sources = build_sources(
+            source_names,
+            tuple(args.greenhouse),
+            tuple(args.lever),
+            tuple(args.ashby),
+            tuple(args.personio),
+            tuple(args.smartrecruiters),
+            tuple(args.workday),
+        )
     except ValueError as exc:
         parser.error(str(exc))
 
@@ -29,6 +37,10 @@ def main(argv: list[str] | None = None) -> int:
         include_unverified=args.include_unverified,
         greenhouse_companies=tuple(args.greenhouse),
         lever_companies=tuple(args.lever),
+        ashby_companies=tuple(args.ashby),
+        personio_companies=tuple(args.personio),
+        smartrecruiters_companies=tuple(args.smartrecruiters),
+        workday_sites=tuple(args.workday),
     )
     report = SearchReport()
     jobs = collect_jobs(sources, query, report)
@@ -81,6 +93,30 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         help="Lever company board token.",
+    )
+    parser.add_argument(
+        "--ashby",
+        action="append",
+        default=[],
+        help="Ashby job board token, for example a company slug from jobs.ashbyhq.com.",
+    )
+    parser.add_argument(
+        "--personio",
+        action="append",
+        default=[],
+        help="Personio company token, for example acme from acme.jobs.personio.de.",
+    )
+    parser.add_argument(
+        "--smartrecruiters",
+        action="append",
+        default=[],
+        help="SmartRecruiters company token.",
+    )
+    parser.add_argument(
+        "--workday",
+        action="append",
+        default=[],
+        help="Full Workday candidate site URL.",
     )
     parser.add_argument(
         "--format",

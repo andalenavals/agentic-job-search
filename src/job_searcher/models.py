@@ -13,6 +13,10 @@ class SearchQuery:
     include_unverified: bool = False
     greenhouse_companies: tuple[str, ...] = ()
     lever_companies: tuple[str, ...] = ()
+    ashby_companies: tuple[str, ...] = ()
+    personio_companies: tuple[str, ...] = ()
+    smartrecruiters_companies: tuple[str, ...] = ()
+    workday_sites: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

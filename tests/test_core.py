@@ -7,9 +7,19 @@ from job_searcher.exporters import to_csv, to_markdown
 from job_searcher.models import JobPosting, SearchQuery
 from job_searcher.official_links import is_likely_official_application
 from job_searcher.reporting import SearchReport
+from job_searcher.sources.ashby import (
+    ashby_location,
+    ashby_url,
+    extract_jobs as extract_ashby_jobs,
+)
 from job_searcher.search import collect_jobs
 from job_searcher.sources.base import JobSource
 from job_searcher.sources.arbeitsagentur import job_detail_url, parse_date
+from job_searcher.sources.berlin_startup_jobs import (
+    BerlinStartupJobsParser,
+    canonicalize_job_url as canonicalize_berlin_startup_jobs_url,
+)
+from job_searcher.sources.bund_de import BundDeJobsParser
 from job_searcher.sources.experis import (
     ExperisJobsParser,
     canonicalize_job_url as canonicalize_experis_url,
@@ -44,15 +54,29 @@ from job_searcher.sources.linkedin import (
     canonicalize_job_url,
     parse_date as parse_linkedin_date,
 )
+from job_searcher.sources.personio import parse_positions, personio_url, text_value
 from job_searcher.sources.remote_com import (
     extract_jobs as extract_remote_com_jobs,
     search_url as remote_com_search_url,
 )
 from job_searcher.sources.remotive import matches_query, parse_iso_datetime
+from job_searcher.sources.smartrecruiters import (
+    extract_postings as extract_smartrecruiters_postings,
+    location_name as smartrecruiters_location_name,
+)
 from job_searcher.sources.stepstone import (
     StepStoneJobsParser,
     canonicalize_job_url as canonicalize_stepstone_url,
     search_url as stepstone_search_url,
+)
+from job_searcher.sources.workday import (
+    WorkdayJobsParser,
+    canonicalize_job_url as canonicalize_workday_url,
+)
+from job_searcher.sources.xing import (
+    XingJobsParser,
+    canonicalize_job_url as canonicalize_xing_url,
+    search_url as xing_search_url,
 )
 
 
@@ -80,6 +104,36 @@ class OfficialLinkTests(unittest.TestCase):
         self.assertTrue(
             is_likely_official_application(
                 "https://www.karriere.nrw/stellenausschreibung/abc123", "Acme"
+            )
+        )
+        self.assertTrue(
+            is_likely_official_application(
+                "https://jobs.ashbyhq.com/acme/abc123",
+                "Acme",
+            )
+        )
+        self.assertTrue(
+            is_likely_official_application(
+                "https://acme.jobs.personio.de/job/123",
+                "Acme",
+            )
+        )
+        self.assertTrue(
+            is_likely_official_application(
+                "https://careers.smartrecruiters.com/Acme/data-analyst",
+                "Acme",
+            )
+        )
+        self.assertTrue(
+            is_likely_official_application(
+                "https://acme.wd1.myworkdayjobs.com/en-US/careers/job/Data-Analyst",
+                "Acme",
+            )
+        )
+        self.assertTrue(
+            is_likely_official_application(
+                "https://www.service.bund.de/Content/DE/Stellenangebote/abc.html",
+                "Bund",
             )
         )
 
@@ -116,6 +170,15 @@ class OfficialLinkTests(unittest.TestCase):
                 "https://www.stepstone.de/stellenangebote--data-analyst-berlin--123.html",
                 "Acme",
             )
+        )
+        self.assertFalse(
+            is_likely_official_application(
+                "https://berlinstartupjobs.com/jobs/data-analyst-acme",
+                "Acme",
+            )
+        )
+        self.assertFalse(
+            is_likely_official_application("https://www.xing.com/jobs/berlin-data-analyst-1")
         )
 
 
@@ -264,6 +327,116 @@ class SourceMatchingTests(unittest.TestCase):
         self.assertIn("-site:linkedin.com", query)
         self.assertEqual(clean_google_title("Data Analyst | Acme Careers"), "Data Analyst")
         self.assertEqual(google_company_from_url("https://jobs.lever.co/acme/abc"), "lever")
+
+    def test_berlin_startup_jobs_parser(self) -> None:
+        parser = BerlinStartupJobsParser()
+        parser.feed(
+            """
+            <article>
+              <a href="/jobs/data-analyst-acme/">Data Analyst</a>
+              <span class="company">Acme GmbH</span>
+              <span class="location">Berlin</span>
+            </article>
+            """
+        )
+        self.assertEqual(len(parser.cards), 1)
+        self.assertEqual(parser.cards[0].title, "Data Analyst")
+        self.assertEqual(parser.cards[0].company, "Acme GmbH")
+        self.assertEqual(parser.cards[0].location, "Berlin")
+        self.assertEqual(
+            canonicalize_berlin_startup_jobs_url(parser.cards[0].url),
+            "https://berlinstartupjobs.com/jobs/data-analyst-acme/",
+        )
+
+    def test_xing_parser_and_url(self) -> None:
+        parser = XingJobsParser()
+        parser.feed('<a href="/jobs/berlin-data-analyst-123">Data Analyst</a>')
+        self.assertEqual(len(parser.cards), 1)
+        self.assertEqual(parser.cards[0].title, "Data Analyst")
+        self.assertEqual(
+            canonicalize_xing_url(parser.cards[0].url),
+            "https://www.xing.com/jobs/berlin-data-analyst-123",
+        )
+        self.assertEqual(
+            xing_search_url(SearchQuery(title="data analyst", location="Berlin")),
+            "https://www.xing.com/jobs/berlin-data-analyst",
+        )
+
+    def test_bund_de_parser(self) -> None:
+        parser = BundDeJobsParser()
+        parser.feed(
+            """
+            <a href="/Content/DE/Stellenangebote/abc.html">
+              Data Analyst im Bundesdienst
+            </a>
+            """
+        )
+        self.assertEqual(len(parser.cards), 1)
+        self.assertEqual(parser.cards[0].title, "Data Analyst im Bundesdienst")
+        self.assertEqual(
+            parser.cards[0].url,
+            "https://www.service.bund.de/Content/DE/Stellenangebote/abc.html",
+        )
+
+    def test_ashby_helpers(self) -> None:
+        payload = {
+            "jobs": [
+                {
+                    "title": "Data Analyst",
+                    "location": {"name": "Berlin"},
+                    "jobUrl": "https://jobs.ashbyhq.com/acme/abc123",
+                }
+            ]
+        }
+        jobs = extract_ashby_jobs(payload)
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(ashby_location(jobs[0]), "Berlin")
+        self.assertEqual(ashby_url(jobs[0]), "https://jobs.ashbyhq.com/acme/abc123")
+
+    def test_smartrecruiters_helpers(self) -> None:
+        payload = {
+            "content": [
+                {
+                    "name": "Data Analyst",
+                    "location": {"city": "Berlin", "country": "Germany"},
+                    "ref": "https://jobs.smartrecruiters.com/Acme/123-data-analyst",
+                }
+            ]
+        }
+        postings = extract_smartrecruiters_postings(payload)
+        self.assertEqual(len(postings), 1)
+        self.assertEqual(smartrecruiters_location_name(postings[0]), "Berlin, Germany")
+
+    def test_personio_helpers(self) -> None:
+        xml = """
+        <workzag-jobs>
+          <position>
+            <id>123</id>
+            <name>Data Analyst</name>
+            <office>Berlin</office>
+          </position>
+        </workzag-jobs>
+        """
+        positions = parse_positions(xml)
+        self.assertEqual(len(positions), 1)
+        self.assertEqual(text_value(positions[0], "name"), "Data Analyst")
+        self.assertEqual(personio_url("acme", "123"), "https://acme.jobs.personio.de/job/123")
+
+    def test_workday_parser(self) -> None:
+        parser = WorkdayJobsParser("https://acme.wd1.myworkdayjobs.com/careers")
+        parser.feed(
+            """
+            <a href="/careers/job/Berlin/Data-Analyst_R123">
+              Data Analyst
+            </a>
+            """
+        )
+        self.assertEqual(len(parser.cards), 1)
+        self.assertEqual(parser.cards[0].title, "Data Analyst")
+        self.assertEqual(
+            canonicalize_workday_url(parser.cards[0].url),
+            "https://acme.wd1.myworkdayjobs.com/careers/job/Berlin/Data-Analyst_R123",
+        )
 
     def test_experis_card_parser(self) -> None:
         parser = ExperisJobsParser()

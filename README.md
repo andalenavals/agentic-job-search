@@ -18,18 +18,26 @@ Implemented:
 - Public-source connectors:
   - Bundesagentur fuer Arbeit public search API.
   - Arbeitnow public API.
+  - BerlinStartupJobs public job cards as experimental, unverified source links.
+  - Bund.de public job cards.
   - Experis public job cards as experimental, unverified source links.
   - Glassdoor public job cards as experimental, unverified source links.
   - Google Programmable Search JSON API as optional configured source.
   - Indeed public search cards as experimental, unverified source links.
+  - Interamt public job cards.
   - Karriere.NRW public OpenData API.
   - Kununu public job listings as experimental, unverified source links.
   - LinkedIn public guest job cards as experimental, unverified source links.
   - Remote.com public remote jobs pages with official apply links where available.
   - Remotive public API.
   - StepStone public job cards as experimental, unverified source links.
+  - Xing public job cards as experimental, unverified source links.
+  - Ashby company boards when company tokens are provided.
   - Greenhouse company boards when company tokens are provided.
   - Lever company boards when company tokens are provided.
+  - Personio company boards when company tokens are provided.
+  - SmartRecruiters company boards when company tokens are provided.
+  - Workday career sites when a full Workday site URL is provided.
 - Placeholder connector for Instaffo.
 - Official application link heuristics.
 - Markdown and CSV output.
@@ -55,10 +63,14 @@ Use specific public sources:
 PYTHONPATH=src python3 -m job_searcher --title "python developer" --source arbeitnow --source remotive
 ```
 
-Search selected Greenhouse or Lever company boards:
+Search selected company boards:
 
 ```bash
 PYTHONPATH=src python3 -m job_searcher --title "backend engineer" --greenhouse stripe
+PYTHONPATH=src python3 -m job_searcher --title "data analyst" --ashby acme
+PYTHONPATH=src python3 -m job_searcher --title "data analyst" --personio acme
+PYTHONPATH=src python3 -m job_searcher --title "data analyst" --smartrecruiters Acme
+PYTHONPATH=src python3 -m job_searcher --title "data analyst" --workday https://acme.wd1.myworkdayjobs.com/careers
 ```
 
 Write results to a file:
@@ -82,15 +94,17 @@ Some engines named in the product idea are intentionally placeholders in the MVP
 
 These sites often require JavaScript, login, strict terms, or official APIs. The project should add compliant connectors source by source instead of relying on fragile scraping.
 
-LinkedIn, Indeed, Glassdoor, Kununu, Experis, and StepStone are currently experimental. These connectors read public job cards and return engine job URLs, not verified company ATS links. In strict mode, these results are filtered out. Use `--include-unverified` to inspect them:
+LinkedIn, Indeed, Glassdoor, Kununu, Experis, StepStone, BerlinStartupJobs, and Xing are currently experimental. These connectors read public job cards and return engine job URLs, not verified company ATS links. In strict mode, these results are filtered out. Use `--include-unverified` to inspect them:
 
 ```bash
+PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --source berlinstartupjobs --include-unverified
 PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --source experis --include-unverified
 PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --source linkedin --include-unverified
 PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --source indeed --include-unverified
 PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --source glassdoor --include-unverified
 PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --source kununu --include-unverified
 PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --source stepstone --include-unverified
+PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --source xing --include-unverified
 ```
 
 Remote.com returns official ATS apply links when available. Use `--remote` for remote searches:
@@ -111,6 +125,13 @@ Karriere.NRW uses the public OpenData API and is included in strict mode:
 
 ```bash
 PYTHONPATH=src python3 -m job_searcher --title "Verwaltungs" --source karriere-nrw --limit 5
+```
+
+Bund.de and Interamt are public-sector sources:
+
+```bash
+PYTHONPATH=src python3 -m job_searcher --title "data analyst" --source bund-de --limit 5
+PYTHONPATH=src python3 -m job_searcher --title "data analyst" --source interamt --limit 5
 ```
 
 ## Development
