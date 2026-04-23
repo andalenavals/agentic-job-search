@@ -8,7 +8,9 @@ from job_searcher.debugging import (
     debug_report_to_flat_markdown,
     debug_report_to_markdown,
     debug_sources,
+    flatten_debug_jobs,
 )
+from job_searcher.emailing import build_digest_email, email_settings_from_env, send_email
 from job_searcher.exporters import to_csv, to_markdown
 from job_searcher.matching import ProfileMatcher
 from job_searcher.models import SearchQuery
@@ -69,12 +71,14 @@ def main(argv: list[str] | None = None) -> int:
             per_source_limit=args.debug_limit,
             timeout=args.debug_timeout,
         )
+        flat_rows = flatten_debug_jobs(results, profile_matcher)
         if profile_matcher:
             rendered = debug_report_to_flat_markdown(
                 results,
                 title=args.title,
                 per_source_limit=args.debug_limit,
                 profile_matcher=profile_matcher,
+                flat_rows=flat_rows,
             )
         else:
             rendered = debug_report_to_markdown(results)
@@ -82,6 +86,20 @@ def main(argv: list[str] | None = None) -> int:
             Path(args.output).write_text(rendered, encoding="utf-8")
         else:
             sys.stdout.write(rendered)
+        if args.email_to:
+            settings = email_settings_from_env(from_addr=args.email_from)
+            message = build_digest_email(
+                flat_rows,
+                query_title=args.title,
+                to_addr=args.email_to,
+                from_addr=settings.from_addr,
+                from_name=settings.from_name,
+                subject=args.email_subject,
+                limit=args.email_top,
+                sort_by=args.email_sort,
+            )
+            send_email(message, settings)
+            print(f"Sent top {args.email_top} job digest to {args.email_to}", file=sys.stderr)
         return 0
 
     report = SearchReport()
@@ -161,6 +179,21 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=30,
         help="Seconds to wait for each Ollama match request.",
+    )
+    parser.add_argument("--email-to", help="Send a top job digest to this email address in --debug-links mode.")
+    parser.add_argument("--email-from", help="Email sender address. Defaults to JOB_SEARCH_EMAIL_FROM.")
+    parser.add_argument("--email-subject", help="Custom subject for the job digest email.")
+    parser.add_argument(
+        "--email-top",
+        type=int,
+        default=5,
+        help="Number of jobs to include in the email digest.",
+    )
+    parser.add_argument(
+        "--email-sort",
+        choices=("match", "newest", "source"),
+        default="match",
+        help="How to choose jobs for the email digest.",
     )
     parser.add_argument(
         "--source",

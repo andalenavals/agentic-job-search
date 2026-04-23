@@ -40,6 +40,16 @@ class SourceDebugResult:
     warnings: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class FlatDebugJob:
+    source: str
+    job: JobPosting
+    verification: LinkVerification
+    description: str
+    match: MatchResult | None
+    index: int
+
+
 Verifier = Callable[[JobPosting, SearchQuery, int], LinkVerification]
 
 
@@ -237,6 +247,7 @@ def debug_report_to_flat_markdown(
     title: str,
     per_source_limit: int,
     profile_matcher: ProfileMatcher | None = None,
+    flat_rows: list[FlatDebugJob] | None = None,
 ) -> str:
     total_links = sum(len(result.jobs) for result in results)
     lines = [
@@ -258,6 +269,10 @@ def debug_report_to_flat_markdown(
             lines.append(f"- `{escape_md(source)}`: {escape_md(warning)}")
         lines.append("")
 
+    rows = sorted_flat_debug_jobs(
+        flat_rows if flat_rows is not None else flatten_debug_jobs(results, profile_matcher),
+        by_match=bool(profile_matcher),
+    )
     lines.extend(["## Concatenated Results", ""])
     header = ["Source", "Verdict", "Status", "Official", "Title Found", "Job", "Company"]
     if profile_matcher:
@@ -265,58 +280,81 @@ def debug_report_to_flat_markdown(
     header.extend(["Description", "Final Link"])
     lines.append("| " + " | ".join(header) + " |")
     lines.append("| " + " | ".join("---" for _ in header) + " |")
-    job_rows: list[tuple[float, int, str]] = []
-    empty_rows: list[str] = []
-    row_index = 0
+    no_link_rows = []
     for result in results:
         if not result.jobs:
-            empty_row = (
+            no_link_rows.append(
                 "| "
                 + " | ".join([escape_md(result.source), "no-links", *[""] * (len(header) - 2)])
                 + " |"
             )
-            empty_rows.append(empty_row)
-            continue
+    for row in rows:
+        job = row.job
+        verification = row.verification
+        status = str(verification.status_code or "")
+        if verification.error:
+            status = f"{status} {verification.error}".strip()
+        final_url = verification.final_url or verification.url
+        match_columns: list[str] = []
+        if profile_matcher and row.match:
+            match_columns = [format_semantic_match(row.match), format_llm_match(row.match)]
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    escape_md(row.source),
+                    escape_md(verification.verdict),
+                    escape_md(status),
+                    yes_no(verification.official_like),
+                    yes_no(verification.title_found),
+                    escape_md(job.title),
+                    escape_md(job.company),
+                    *match_columns,
+                    escape_md(row.description),
+                    f"[open]({final_url})",
+                ]
+            )
+            + " |"
+        )
+    lines.extend(no_link_rows)
+    lines.append("")
+    return "\n".join(lines)
+
+
+def flatten_debug_jobs(
+    results: list[SourceDebugResult],
+    profile_matcher: ProfileMatcher | None = None,
+) -> list[FlatDebugJob]:
+    rows = []
+    row_index = 0
+    for result in results:
         for debugged in result.jobs:
             job = debugged.job
             verification = debugged.verification
-            status = str(verification.status_code or "")
-            if verification.error:
-                status = f"{status} {verification.error}".strip()
-            final_url = verification.final_url or verification.url
             description = description_for_report(job, verification)
-            match_columns: list[str] = []
-            sort_score = 0.0
-            if profile_matcher:
-                match = profile_matcher.score(job.title, job.company, description)
-                sort_score = match.sort_score
-                match_columns = [format_semantic_match(match), format_llm_match(match)]
-            row = (
-                "| "
-                + " | ".join(
-                    [
-                        escape_md(result.source),
-                        escape_md(verification.verdict),
-                        escape_md(status),
-                        yes_no(verification.official_like),
-                        yes_no(verification.title_found),
-                        escape_md(job.title),
-                        escape_md(job.company),
-                        *match_columns,
-                        escape_md(description),
-                        f"[open]({final_url})",
-                    ]
-                )
-                + " |"
+            match = (
+                profile_matcher.score(job.title, job.company, description)
+                if profile_matcher
+                else None
             )
-            job_rows.append((sort_score, row_index, row))
+            rows.append(
+                FlatDebugJob(
+                    source=result.source,
+                    job=job,
+                    verification=verification,
+                    description=description,
+                    match=match,
+                    index=row_index,
+                )
+            )
             row_index += 1
-    if profile_matcher:
-        job_rows.sort(key=lambda item: (item[0], -item[1]), reverse=True)
-    lines.extend(row for _, _, row in job_rows)
-    lines.extend(empty_rows)
-    lines.append("")
-    return "\n".join(lines)
+    return rows
+
+
+def sorted_flat_debug_jobs(rows: list[FlatDebugJob], by_match: bool = False) -> list[FlatDebugJob]:
+    if not by_match:
+        return list(rows)
+    return sorted(rows, key=lambda row: (row.match.sort_score if row.match else 0, -row.index), reverse=True)
 
 
 def format_semantic_match(match: MatchResult) -> str:

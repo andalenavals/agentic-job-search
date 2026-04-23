@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from job_searcher.debugging import (
     DebuggedJob,
+    FlatDebugJob,
     LinkVerification,
     SourceDebugResult,
     build_verification,
@@ -19,8 +20,9 @@ from job_searcher.debugging import (
     source_label,
 )
 from job_searcher.cli import normalize_location, normalize_source_names
+from job_searcher.emailing import build_digest_email, select_digest_jobs
 from job_searcher.exporters import to_csv, to_markdown
-from job_searcher.matching import ProfileMatcher, parse_llm_match_response, semantic_match_score
+from job_searcher.matching import MatchResult, ProfileMatcher, parse_llm_match_response, semantic_match_score
 from job_searcher.models import JobPosting, SearchQuery
 from job_searcher.official_links import is_likely_official_application
 from job_searcher.reporting import SearchReport
@@ -551,6 +553,54 @@ class DebuggingTests(unittest.TestCase):
             parse_llm_match_response('<think>hidden</think>{"score": 88, "reason": "Strong data fit"}'),
             (88, "Strong data fit", ""),
         )
+
+    def test_email_digest_selects_top_jobs(self) -> None:
+        verification = build_verification(
+            "https://jobs.example/1",
+            "https://jobs.example/1",
+            True,
+            200,
+            "text/html",
+            True,
+            True,
+        )
+        weak = FlatDebugJob(
+            source="source-a",
+            job=JobPosting("Sales Manager", "Beta", "Berlin", "test", "https://jobs.example/1"),
+            verification=verification,
+            description="Sales role",
+            match=MatchResult(semantic_score=10, llm_score=20),
+            index=0,
+        )
+        strong = FlatDebugJob(
+            source="source-b",
+            job=JobPosting(
+                "Data Analyst",
+                "Acme",
+                "Berlin",
+                "test",
+                "https://jobs.example/2",
+                published_at=datetime(2026, 4, 20, tzinfo=timezone.utc),
+            ),
+            verification=verification,
+            description="Python SQL dashboards",
+            match=MatchResult(semantic_score=80, llm_score=90, llm_reason="Strong fit"),
+            index=1,
+        )
+        self.assertEqual(select_digest_jobs([weak, strong], limit=1, sort_by="match"), [strong])
+        self.assertEqual(select_digest_jobs([weak, strong], limit=1, sort_by="newest"), [strong])
+        message = build_digest_email(
+            [weak, strong],
+            query_title="Data",
+            to_addr="to@example.com",
+            from_addr="from@example.com",
+            limit=1,
+            sort_by="match",
+        )
+        body = message.get_content()
+        self.assertIn("Data Analyst", body)
+        self.assertIn("LLM match: 90/100 - Strong fit", body)
+        self.assertNotIn("Sales Manager", body)
 
     def test_verification_verdicts(self) -> None:
         self.assertEqual(

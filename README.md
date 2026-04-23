@@ -117,6 +117,25 @@ PYTHONPATH=src python3 scripts/gold_test.py \
   --no-llm-match
 ```
 
+Send the top results as an email digest after the report is generated. The SMTP layer uses environment variables so it can work with any provider that supports SMTP:
+
+```bash
+export JOB_SEARCH_SMTP_HOST=smtp.example.com
+export JOB_SEARCH_SMTP_PORT=587
+export JOB_SEARCH_SMTP_USER=andres@example.com
+export JOB_SEARCH_SMTP_PASSWORD=app-password
+export JOB_SEARCH_EMAIL_FROM=andres@example.com
+
+PYTHONPATH=src python3 scripts/gold_test.py \
+  --profile-file profile.txt \
+  --no-llm-match \
+  --email-to hiring-digest@example.com \
+  --email-top 5 \
+  --email-sort match
+```
+
+Use `--email-sort newest` to send the newest postings first, or `--email-sort source` to preserve source order.
+
 ## Source Notes
 
 Some engines named in the product idea are intentionally placeholders in the MVP:
