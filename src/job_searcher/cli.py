@@ -11,12 +11,16 @@ from job_searcher.reporting import SearchReport
 from job_searcher.search import collect_jobs
 from job_searcher.sources import DEFAULT_SOURCE_NAMES, DEFAULT_SOURCES, PLACEHOLDER_SOURCES, build_sources
 
+ALL_SOURCES = "all"
+ALL_LOCATIONS = "all"
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    source_names = args.source or list(DEFAULT_SOURCE_NAMES)
+    source_names = normalize_source_names(args.source)
+    location = normalize_location(args.location)
     try:
         sources = build_sources(
             source_names,
@@ -32,7 +36,7 @@ def main(argv: list[str] | None = None) -> int:
 
     query = SearchQuery(
         title=args.title,
-        location=args.location,
+        location=location,
         remote=args.remote,
         limit=args.limit,
         include_unverified=args.include_unverified or args.debug_links,
@@ -83,7 +87,10 @@ def build_parser() -> argparse.ArgumentParser:
         description="Collect likely official application links for job searches.",
     )
     parser.add_argument("--title", required=True, help="Job title or title keywords.")
-    parser.add_argument("--location", help="Location keyword, for example Berlin or Remote.")
+    parser.add_argument(
+        "--location",
+        help="Location keyword, for example Berlin or Remote. Use 'all' for no location filter.",
+    )
     parser.add_argument("--remote", action="store_true", help="Prefer remote roles.")
     parser.add_argument("--limit", type=int, default=25, help="Maximum number of results.")
     parser.add_argument(
@@ -111,8 +118,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--source",
         action="append",
-        choices=sorted([*DEFAULT_SOURCES, *PLACEHOLDER_SOURCES]),
-        help="Source to search. Can be passed multiple times.",
+        choices=sorted([ALL_SOURCES, *DEFAULT_SOURCES, *PLACEHOLDER_SOURCES]),
+        help="Source to search. Can be passed multiple times. Use 'all' for every selectable source.",
     )
     parser.add_argument(
         "--greenhouse",
@@ -158,6 +165,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--output", help="Write output to a file instead of stdout.")
     return parser
+
+
+def normalize_source_names(source_names: list[str] | None) -> list[str]:
+    if not source_names:
+        return list(DEFAULT_SOURCE_NAMES)
+    if ALL_SOURCES in source_names:
+        return sorted([*DEFAULT_SOURCES, *PLACEHOLDER_SOURCES])
+    return source_names
+
+
+def normalize_location(location: str | None) -> str | None:
+    if location and location.strip().lower() == ALL_LOCATIONS:
+        return None
+    return location
 
 
 if __name__ == "__main__":

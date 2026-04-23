@@ -63,6 +63,12 @@ Use specific public sources:
 PYTHONPATH=src python3 -m job_searcher --title "python developer" --source arbeitnow --source remotive
 ```
 
+Search all selectable sources without a location filter:
+
+```bash
+PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location all --source all --limit 50
+```
+
 Search selected company boards:
 
 ```bash

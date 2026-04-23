@@ -14,6 +14,7 @@ from job_searcher.debugging import (
     debug_sources,
     source_label,
 )
+from job_searcher.cli import normalize_location, normalize_source_names
 from job_searcher.exporters import to_csv, to_markdown
 from job_searcher.models import JobPosting, SearchQuery
 from job_searcher.official_links import is_likely_official_application
@@ -107,6 +108,17 @@ class StaticSource(JobSource):
         self.jobs = jobs
 
     def search(self, query: SearchQuery, report=None):
+        return self.jobs
+
+
+class CountingSource(JobSource):
+    def __init__(self, name: str, jobs: list[JobPosting], calls: list[str]) -> None:
+        self.name = name
+        self.jobs = jobs
+        self.calls = calls
+
+    def search(self, query: SearchQuery, report=None):
+        self.calls.append(self.name)
         return self.jobs
 
 
@@ -243,6 +255,46 @@ class SearchTests(unittest.TestCase):
         )
         results = collect_jobs([StaticSource([older, newer])], SearchQuery(title="Engineer"))
         self.assertEqual([job.company for job in results], ["Acme", "Beta"])
+
+    def test_queries_all_sources_before_applying_limit(self) -> None:
+        calls: list[str] = []
+        first = CountingSource(
+            "first",
+            [JobPosting("Engineer", "Acme", "Berlin", "test", "https://jobs.lever.co/acme/1")],
+            calls,
+        )
+        second = CountingSource(
+            "second",
+            [JobPosting("Engineer", "Beta", "Berlin", "test", "https://jobs.lever.co/beta/1")],
+            calls,
+        )
+        results = collect_jobs([first, second], SearchQuery(title="Engineer", limit=1))
+        self.assertEqual(calls, ["first", "second"])
+        self.assertEqual(len(results), 1)
+
+
+class CliTests(unittest.TestCase):
+    def test_source_all_expands_to_every_selectable_source(self) -> None:
+        sources = normalize_source_names(["all"])
+        self.assertIn("agentur", sources)
+        self.assertIn("google", sources)
+        self.assertIn("instaffo", sources)
+
+    def test_source_all_overrides_other_source_names(self) -> None:
+        sources = normalize_source_names(["linkedin", "all"])
+        self.assertIn("agentur", sources)
+        self.assertIn("instaffo", sources)
+
+    def test_default_sources_do_not_include_configured_google_or_placeholder(self) -> None:
+        sources = normalize_source_names(None)
+        self.assertIn("agentur", sources)
+        self.assertNotIn("google", sources)
+        self.assertNotIn("instaffo", sources)
+
+    def test_location_all_means_no_location_filter(self) -> None:
+        self.assertIsNone(normalize_location("all"))
+        self.assertIsNone(normalize_location(" ALL "))
+        self.assertEqual(normalize_location("Berlin"), "Berlin")
 
 
 class DebuggingTests(unittest.TestCase):

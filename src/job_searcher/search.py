@@ -32,9 +32,7 @@ def collect_jobs(
             results.append(job)
             if report:
                 report.accepted += 1
-            if len(results) >= query.limit:
-                return sort_jobs(results)
-    return sort_jobs(results)
+    return sort_jobs(results)[: query.limit]
 
 
 def sort_jobs(jobs: list[JobPosting]) -> list[JobPosting]:
