@@ -8,6 +8,7 @@ from .lever import LeverSource
 from .linkedin import LinkedInSource
 from .placeholder import PlaceholderSource
 from .remotive import RemotiveSource
+from .stepstone import StepStoneSource
 
 DEFAULT_SOURCES = {
     "agentur": ArbeitsagenturSource,
@@ -15,6 +16,7 @@ DEFAULT_SOURCES = {
     "indeed": IndeedSource,
     "linkedin": LinkedInSource,
     "remotive": RemotiveSource,
+    "stepstone": StepStoneSource,
 }
 
 OPTIONAL_COMPANY_SOURCES = {
@@ -23,7 +25,6 @@ OPTIONAL_COMPANY_SOURCES = {
 }
 
 PLACEHOLDER_SOURCES = {
-    "stepstone": "Requires compliant API/browser implementation; direct scraping is not included.",
     "instaffo": "Requires compliant API/browser implementation; direct scraping is not included.",
     "glassdoor": "Requires compliant API/browser implementation; direct scraping is not included.",
 }

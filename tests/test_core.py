@@ -20,6 +20,11 @@ from job_searcher.sources.linkedin import (
     parse_date as parse_linkedin_date,
 )
 from job_searcher.sources.remotive import matches_query, parse_iso_datetime
+from job_searcher.sources.stepstone import (
+    StepStoneJobsParser,
+    canonicalize_job_url as canonicalize_stepstone_url,
+    search_url as stepstone_search_url,
+)
 
 
 class StaticSource(JobSource):
@@ -53,6 +58,12 @@ class OfficialLinkTests(unittest.TestCase):
         )
         self.assertFalse(
             is_likely_official_application("https://www.indeed.com/viewjob?jk=abc123", "Acme")
+        )
+        self.assertFalse(
+            is_likely_official_application(
+                "https://www.stepstone.de/stellenangebote--data-analyst-berlin--123.html",
+                "Acme",
+            )
         )
 
 
@@ -167,6 +178,39 @@ class SourceMatchingTests(unittest.TestCase):
         self.assertEqual(
             canonicalize_indeed_url(parser.cards[0].url),
             "https://www.indeed.com/viewjob?jk=abc123",
+        )
+
+    def test_stepstone_card_parser(self) -> None:
+        parser = StepStoneJobsParser()
+        parser.feed(
+            """
+            <article data-at="job-item" data-testid="job-item">
+              <a data-at="job-item-title" href="/stellenangebote--Senior-Data-Analyst-Berlin-Acme--123-inline.html">
+                <style>.noise{color:red}</style>
+                <div><div>Senior Data Analyst</div></div>
+              </a>
+              <span data-at="job-item-company-name">
+                <span><svg><path></path></svg></span>
+                <span>Acme GmbH</span>
+              </span>
+              <span data-at="job-item-location">
+                <span><svg><path></path></svg></span>
+                <span>Berlin</span>
+              </span>
+            </article>
+            """
+        )
+        self.assertEqual(len(parser.cards), 1)
+        self.assertEqual(parser.cards[0].title, "Senior Data Analyst")
+        self.assertEqual(parser.cards[0].company, "Acme GmbH")
+        self.assertEqual(parser.cards[0].location, "Berlin")
+        self.assertEqual(
+            canonicalize_stepstone_url(parser.cards[0].url),
+            "https://www.stepstone.de/stellenangebote--Senior-Data-Analyst-Berlin-Acme--123-inline.html",
+        )
+        self.assertEqual(
+            stepstone_search_url(SearchQuery(title="data analyst", location="Berlin")),
+            "https://www.stepstone.de/jobs/data-analyst/in-berlin",
         )
 
     def test_remotive_match_requires_all_title_terms(self) -> None:
