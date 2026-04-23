@@ -24,7 +24,7 @@ from job_searcher.sources.ashby import (
     ashby_url,
     extract_jobs as extract_ashby_jobs,
 )
-from job_searcher.search import collect_jobs
+from job_searcher.search import collect_jobs, duplicate_position_key, normalize_position_text, normalize_url
 from job_searcher.sources.base import JobSource
 from job_searcher.sources.arbeitsagentur import job_detail_url, parse_date
 from job_searcher.sources.berlin_startup_jobs import (
@@ -235,6 +235,55 @@ class SearchTests(unittest.TestCase):
             [StaticSource(jobs)], SearchQuery(title="Engineer", include_unverified=True)
         )
         self.assertEqual(len(results), 1)
+
+    def test_filters_duplicate_links(self) -> None:
+        jobs = [
+            JobPosting("Engineer", "Acme", "Berlin", "a", "https://jobs.lever.co/acme/1"),
+            JobPosting("Engineer II", "Acme", "Berlin", "b", "https://jobs.lever.co/acme/1/"),
+        ]
+        report = SearchReport()
+        results = collect_jobs([StaticSource(jobs)], SearchQuery(title="Engineer"), report)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(report.filtered_duplicate_links, 1)
+        self.assertEqual(report.filtered_duplicates, 1)
+
+    def test_filters_duplicate_positions_with_different_links(self) -> None:
+        jobs = [
+            JobPosting("Data Analyst", "Acme GmbH", "Berlin", "agentur", "https://jobs.lever.co/acme/1"),
+            JobPosting("Data Analyst", "Acme GmbH", "Berlin", "linkedin", "https://jobs.lever.co/acme/2"),
+            JobPosting("Data Analyst", "Acme GmbH", "Munich", "linkedin", "https://jobs.lever.co/acme/3"),
+        ]
+        report = SearchReport()
+        results = collect_jobs([StaticSource(jobs)], SearchQuery(title="Data Analyst"), report)
+        self.assertEqual([job.best_url for job in results], [
+            "https://jobs.lever.co/acme/1",
+            "https://jobs.lever.co/acme/3",
+        ])
+        self.assertEqual(report.filtered_duplicate_positions, 1)
+        self.assertEqual(report.filtered_duplicates, 1)
+
+    def test_does_not_position_dedupe_when_company_is_missing(self) -> None:
+        jobs = [
+            JobPosting("Data Analyst", "", "Berlin", "a", "https://jobs.lever.co/acme/1"),
+            JobPosting("Data Analyst", "", "Berlin", "b", "https://jobs.lever.co/acme/2"),
+        ]
+        results = collect_jobs([StaticSource(jobs)], SearchQuery(title="Data Analyst"))
+        self.assertEqual(len(results), 2)
+
+    def test_duplicate_key_helpers(self) -> None:
+        job = JobPosting(
+            "  Senior Data-Analyst ",
+            "ACME GmbH",
+            "Berlin, Germany",
+            "test",
+            "https://jobs.lever.co/acme/1/",
+        )
+        self.assertEqual(normalize_position_text("Senior Data-Analyst"), "senior data analyst")
+        self.assertEqual(normalize_url(job.best_url), "https://jobs.lever.co/acme/1")
+        self.assertEqual(
+            duplicate_position_key(job),
+            ("senior data analyst", "acme gmbh", "berlin germany"),
+        )
 
     def test_sorts_newest_first(self) -> None:
         older = JobPosting(

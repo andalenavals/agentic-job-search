@@ -10,6 +10,8 @@ class SearchReport:
     accepted: int = 0
     filtered_unverified: int = 0
     filtered_duplicates: int = 0
+    filtered_duplicate_links: int = 0
+    filtered_duplicate_positions: int = 0
 
     def warn(self, message: str) -> None:
         self.warnings.append(message)
