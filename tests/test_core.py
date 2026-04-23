@@ -24,7 +24,7 @@ from job_searcher.debugging import (
     source_label,
 )
 from job_searcher.cli import main as cli_main, normalize_location, normalize_source_names
-from job_searcher.emailing import EmailSettings, build_digest_email, select_digest_jobs
+from job_searcher.emailing import EmailSettings, build_digest_email, render_action_report, select_digest_jobs
 from job_searcher.exporters import to_csv, to_markdown
 from job_searcher.matching import MatchResult, ProfileMatcher, parse_llm_match_response, semantic_match_score
 from job_searcher.models import JobPosting, SearchQuery
@@ -644,6 +644,10 @@ class DebuggingTests(unittest.TestCase):
         self.assertIn("# Top job links for: Data", body)
         self.assertIn("https://jobs.example/1", body)
         self.assertNotIn("Sales Manager", body)
+        self.assertEqual(
+            render_action_report([weak, strong], limit=1, sort_by="match"),
+            "https://jobs.example/1\n",
+        )
 
     def test_verification_verdicts(self) -> None:
         self.assertEqual(

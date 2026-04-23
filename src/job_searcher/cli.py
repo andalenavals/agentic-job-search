@@ -10,7 +10,12 @@ from job_searcher.debugging import (
     debug_sources,
     flatten_debug_jobs,
 )
-from job_searcher.emailing import build_digest_email, email_settings_from_env, send_email
+from job_searcher.emailing import (
+    build_digest_email,
+    email_settings_from_env,
+    render_action_report,
+    send_email,
+)
 from job_searcher.exporters import to_csv, to_markdown
 from job_searcher.matching import ProfileMatcher
 from job_searcher.models import SearchQuery
@@ -86,6 +91,11 @@ def main(argv: list[str] | None = None) -> int:
             Path(args.output).write_text(rendered, encoding="utf-8")
         else:
             sys.stdout.write(rendered)
+        if args.action_output:
+            Path(args.action_output).write_text(
+                render_action_report(flat_rows, limit=args.email_top, sort_by=args.email_sort),
+                encoding="utf-8",
+            )
         if args.email_to:
             try:
                 settings = email_settings_from_env(from_addr=args.email_from)
@@ -191,6 +201,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--email-to", help="Send a top job digest to this email address in --debug-links mode.")
     parser.add_argument("--email-from", help="Email sender address. Defaults to JOB_SEARCH_EMAIL_FROM.")
     parser.add_argument("--email-subject", help="Custom subject for the job digest email.")
+    parser.add_argument(
+        "--action-output",
+        help="Write a links-only action report in the selected email sort order.",
+    )
     parser.add_argument(
         "--email-top",
         type=int,

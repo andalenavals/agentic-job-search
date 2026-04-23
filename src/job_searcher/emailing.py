@@ -93,6 +93,13 @@ def render_digest_text(rows: list[FlatDebugJob], query_title: str, sort_by: str)
     return "\n".join(lines).rstrip() + "\n"
 
 
+def render_action_report(rows: list[FlatDebugJob], limit: int = 5, sort_by: str = "match") -> str:
+    selected = select_digest_jobs(rows, limit=limit, sort_by=sort_by)
+    if not selected:
+        return ""
+    return "\n".join(row.verification.final_url or row.verification.url for row in selected) + "\n"
+
+
 def send_email(message: EmailMessage, settings: EmailSettings) -> None:
     if not settings.host:
         raise ValueError("Missing SMTP host. Set JOB_SEARCH_SMTP_HOST or pass SMTP settings.")
