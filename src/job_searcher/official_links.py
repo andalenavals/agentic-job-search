@@ -8,6 +8,7 @@ AGGREGATOR_HOST_PARTS = (
     "stepstone.",
     "instaffo.",
     "indeed.",
+    "kununu.",
     "monster.",
 )
 

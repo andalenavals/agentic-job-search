@@ -18,6 +18,12 @@ from job_searcher.sources.indeed import (
     IndeedJobsParser,
     canonicalize_job_url as canonicalize_indeed_url,
 )
+from job_searcher.sources.kununu import (
+    canonicalize_job_url as canonicalize_kununu_url,
+    extract_jobs as extract_kununu_jobs,
+    parse_date as parse_kununu_date,
+    search_url as kununu_search_url,
+)
 from job_searcher.sources.linkedin import (
     LinkedInJobsParser,
     canonicalize_job_url,
@@ -66,6 +72,12 @@ class OfficialLinkTests(unittest.TestCase):
         self.assertFalse(
             is_likely_official_application(
                 "https://www.glassdoor.de/job-listing/data-analyst-acme-JV.htm?jl=123",
+                "Acme",
+            )
+        )
+        self.assertFalse(
+            is_likely_official_application(
+                "https://www.kununu.com/job-postings/de/abc123",
                 "Acme",
             )
         )
@@ -213,6 +225,44 @@ class SourceMatchingTests(unittest.TestCase):
         self.assertEqual(
             canonicalize_glassdoor_url(parser.cards[0].url),
             "https://www.glassdoor.de/job-listing/data-analyst-acme-JV.htm?jl=123",
+        )
+
+    def test_kununu_next_data_parser(self) -> None:
+        html = """
+        <script id="__NEXT_DATA__" type="application/json">
+        {
+          "props": {
+            "pageProps": {
+              "searchJobs": {
+                "jobs": [
+                  {
+                    "title": "Data Analyst",
+                    "city": "Berlin",
+                    "region": "Berlin",
+                    "url": "/job-postings/de/abc123",
+                    "postedAt": "2026-04-20",
+                    "profile": {"companyName": "Acme GmbH"}
+                  }
+                ]
+              }
+            }
+          }
+        }
+        </script>
+        """
+        jobs = extract_kununu_jobs(html)
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0]["title"], "Data Analyst")
+        self.assertEqual(
+            canonicalize_kununu_url("https://www.kununu.com/job-postings/de/abc123?foo=bar"),
+            "https://www.kununu.com/job-postings/de/abc123",
+        )
+        parsed = parse_kununu_date(jobs[0]["postedAt"])
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed.year, 2026)
+        self.assertEqual(
+            kununu_search_url(SearchQuery(title="data analyst", location="Berlin")),
+            "https://www.kununu.com/de/jobs/j-data-analyst/l-state-berlin",
         )
 
     def test_stepstone_card_parser(self) -> None:

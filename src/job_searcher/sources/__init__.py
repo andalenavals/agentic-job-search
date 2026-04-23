@@ -5,6 +5,7 @@ from .arbeitnow import ArbeitnowSource
 from .glassdoor import GlassdoorSource
 from .greenhouse import GreenhouseSource
 from .indeed import IndeedSource
+from .kununu import KununuSource
 from .lever import LeverSource
 from .linkedin import LinkedInSource
 from .placeholder import PlaceholderSource
@@ -16,6 +17,7 @@ DEFAULT_SOURCES = {
     "arbeitnow": ArbeitnowSource,
     "glassdoor": GlassdoorSource,
     "indeed": IndeedSource,
+    "kununu": KununuSource,
     "linkedin": LinkedInSource,
     "remotive": RemotiveSource,
     "stepstone": StepStoneSource,
