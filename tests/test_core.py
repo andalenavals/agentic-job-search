@@ -10,6 +10,7 @@ from job_searcher.debugging import (
     build_verification,
     content_mentions_job,
     debug_report_to_markdown,
+    debug_report_to_flat_markdown,
     debug_sources,
     source_label,
 )
@@ -292,6 +293,31 @@ class DebuggingTests(unittest.TestCase):
         self.assertIn("## test", report)
         self.assertIn("verified", report)
         self.assertIn("[open](https://jobs.lever.co/acme/1)", report)
+
+    def test_flat_debug_report_markdown(self) -> None:
+        job = JobPosting("Data Analyst", "Acme", "Berlin", "test", "https://jobs.lever.co/acme/1")
+        verification = build_verification(
+            url=job.best_url,
+            final_url=job.best_url,
+            reachable=True,
+            status_code=200,
+            content_type="text/html",
+            official_like=True,
+            title_found=True,
+        )
+        report = debug_report_to_flat_markdown(
+            [
+                SourceDebugResult(
+                    source="test",
+                    warnings=(),
+                    jobs=(DebuggedJob(job=job, verification=verification),),
+                )
+            ],
+            title="Data",
+            per_source_limit=5,
+        )
+        self.assertIn("# Job Search Cold Test", report)
+        self.assertIn("| test | verified | 200 | yes | yes | Data Analyst | Acme |", report)
 
     def test_verification_verdicts(self) -> None:
         self.assertEqual(

@@ -93,6 +93,12 @@ PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin 
 PYTHONPATH=src python3 -m job_searcher --title "data analyst" --source linkedin --debug-links --debug-limit 5
 ```
 
+Run the repeatable cold test across all selectable sources with title `Data`, no location filter, five links per source, and live link verification:
+
+```bash
+PYTHONPATH=src python3 scripts/cold_test.py
+```
+
 ## Source Notes
 
 Some engines named in the product idea are intentionally placeholders in the MVP:

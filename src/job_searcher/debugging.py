@@ -226,6 +226,85 @@ def debug_report_to_markdown(results: list[SourceDebugResult]) -> str:
     return "\n".join(lines)
 
 
+def debug_report_to_flat_markdown(
+    results: list[SourceDebugResult],
+    title: str,
+    per_source_limit: int,
+) -> str:
+    total_links = sum(len(result.jobs) for result in results)
+    lines = [
+        "# Job Search Cold Test",
+        "",
+        f"- Query title: `{escape_md(title)}`",
+        "- Location: any",
+        f"- Per-source link limit: `{per_source_limit}`",
+        f"- Sources tested: `{len(results)}`",
+        f"- Links verified: `{total_links}`",
+        "",
+    ]
+    warnings = [
+        (result.source, warning) for result in results for warning in result.warnings
+    ]
+    if warnings:
+        lines.extend(["## Source Warnings", ""])
+        for source, warning in warnings:
+            lines.append(f"- `{escape_md(source)}`: {escape_md(warning)}")
+        lines.append("")
+
+    lines.extend(
+        [
+            "## Concatenated Results",
+            "",
+            "| Source | Verdict | Status | Official | Title Found | Job | Company | Final Link |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- |",
+        ]
+    )
+    for result in results:
+        if not result.jobs:
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        escape_md(result.source),
+                        "no-links",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                    ]
+                )
+                + " |"
+            )
+            continue
+        for debugged in result.jobs:
+            job = debugged.job
+            verification = debugged.verification
+            status = str(verification.status_code or "")
+            if verification.error:
+                status = f"{status} {verification.error}".strip()
+            final_url = verification.final_url or verification.url
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        escape_md(result.source),
+                        escape_md(verification.verdict),
+                        escape_md(status),
+                        yes_no(verification.official_like),
+                        yes_no(verification.title_found),
+                        escape_md(job.title),
+                        escape_md(job.company),
+                        f"[open]({final_url})",
+                    ]
+                )
+                + " |"
+            )
+    lines.append("")
+    return "\n".join(lines)
+
+
 def yes_no(value: bool) -> str:
     return "yes" if value else "no"
 
