@@ -10,6 +10,10 @@ from job_searcher.reporting import SearchReport
 from job_searcher.search import collect_jobs
 from job_searcher.sources.base import JobSource
 from job_searcher.sources.arbeitsagentur import job_detail_url, parse_date
+from job_searcher.sources.glassdoor import (
+    GlassdoorJobsParser,
+    canonicalize_job_url as canonicalize_glassdoor_url,
+)
 from job_searcher.sources.indeed import (
     IndeedJobsParser,
     canonicalize_job_url as canonicalize_indeed_url,
@@ -58,6 +62,12 @@ class OfficialLinkTests(unittest.TestCase):
         )
         self.assertFalse(
             is_likely_official_application("https://www.indeed.com/viewjob?jk=abc123", "Acme")
+        )
+        self.assertFalse(
+            is_likely_official_application(
+                "https://www.glassdoor.de/job-listing/data-analyst-acme-JV.htm?jl=123",
+                "Acme",
+            )
         )
         self.assertFalse(
             is_likely_official_application(
@@ -178,6 +188,31 @@ class SourceMatchingTests(unittest.TestCase):
         self.assertEqual(
             canonicalize_indeed_url(parser.cards[0].url),
             "https://www.indeed.com/viewjob?jk=abc123",
+        )
+
+    def test_glassdoor_card_parser(self) -> None:
+        parser = GlassdoorJobsParser()
+        parser.feed(
+            """
+            <li data-test="jobListing">
+              <a data-test="job-link" href="/job-listing/data-analyst-acme-JV.htm?jl=123">
+                <span data-test="job-title">
+                  <style>.noise{color:red}</style>
+                  Data Analyst
+                </span>
+              </a>
+              <div data-test="employer-name">Acme GmbH</div>
+              <span data-test="emp-location">Berlin</span>
+            </li>
+            """
+        )
+        self.assertEqual(len(parser.cards), 1)
+        self.assertEqual(parser.cards[0].title, "Data Analyst")
+        self.assertEqual(parser.cards[0].company, "Acme GmbH")
+        self.assertEqual(parser.cards[0].location, "Berlin")
+        self.assertEqual(
+            canonicalize_glassdoor_url(parser.cards[0].url),
+            "https://www.glassdoor.de/job-listing/data-analyst-acme-JV.htm?jl=123",
         )
 
     def test_stepstone_card_parser(self) -> None:

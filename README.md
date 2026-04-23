@@ -18,13 +18,14 @@ Implemented:
 - Public-source connectors:
   - Bundesagentur fuer Arbeit public search API.
   - Arbeitnow public API.
+  - Glassdoor public job cards as experimental, unverified source links.
   - Indeed public search cards as experimental, unverified source links.
   - LinkedIn public guest job cards as experimental, unverified source links.
   - Remotive public API.
   - StepStone public job cards as experimental, unverified source links.
   - Greenhouse company boards when company tokens are provided.
   - Lever company boards when company tokens are provided.
-- Placeholder connectors for Instaffo and Glassdoor.
+- Placeholder connector for Instaffo.
 - Official application link heuristics.
 - Markdown and CSV output.
 
@@ -78,11 +79,12 @@ Some engines named in the product idea are intentionally placeholders in the MVP
 
 These sites often require JavaScript, login, strict terms, or official APIs. The project should add compliant connectors source by source instead of relying on fragile scraping.
 
-LinkedIn, Indeed, and StepStone are currently experimental. These connectors read public job cards and return engine job URLs, not verified company ATS links. In strict mode, these results are filtered out. Use `--include-unverified` to inspect them:
+LinkedIn, Indeed, Glassdoor, and StepStone are currently experimental. These connectors read public job cards and return engine job URLs, not verified company ATS links. In strict mode, these results are filtered out. Use `--include-unverified` to inspect them:
 
 ```bash
 PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --source linkedin --include-unverified
 PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --source indeed --include-unverified
+PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --source glassdoor --include-unverified
 PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --source stepstone --include-unverified
 ```
 

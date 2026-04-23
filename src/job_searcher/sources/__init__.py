@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from .arbeitsagentur import ArbeitsagenturSource
 from .arbeitnow import ArbeitnowSource
+from .glassdoor import GlassdoorSource
 from .greenhouse import GreenhouseSource
 from .indeed import IndeedSource
 from .lever import LeverSource
@@ -13,6 +14,7 @@ from .stepstone import StepStoneSource
 DEFAULT_SOURCES = {
     "agentur": ArbeitsagenturSource,
     "arbeitnow": ArbeitnowSource,
+    "glassdoor": GlassdoorSource,
     "indeed": IndeedSource,
     "linkedin": LinkedInSource,
     "remotive": RemotiveSource,
@@ -26,7 +28,6 @@ OPTIONAL_COMPANY_SOURCES = {
 
 PLACEHOLDER_SOURCES = {
     "instaffo": "Requires compliant API/browser implementation; direct scraping is not included.",
-    "glassdoor": "Requires compliant API/browser implementation; direct scraping is not included.",
 }
 
 
