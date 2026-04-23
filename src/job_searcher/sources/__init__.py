@@ -2,23 +2,29 @@ from __future__ import annotations
 
 from .arbeitsagentur import ArbeitsagenturSource
 from .arbeitnow import ArbeitnowSource
+from .experis import ExperisSource
 from .glassdoor import GlassdoorSource
 from .greenhouse import GreenhouseSource
 from .indeed import IndeedSource
+from .karriere_nrw import KarriereNrwSource
 from .kununu import KununuSource
 from .lever import LeverSource
 from .linkedin import LinkedInSource
 from .placeholder import PlaceholderSource
+from .remote_com import RemoteComSource
 from .remotive import RemotiveSource
 from .stepstone import StepStoneSource
 
 DEFAULT_SOURCES = {
     "agentur": ArbeitsagenturSource,
     "arbeitnow": ArbeitnowSource,
+    "experis": ExperisSource,
     "glassdoor": GlassdoorSource,
     "indeed": IndeedSource,
+    "karriere-nrw": KarriereNrwSource,
     "kununu": KununuSource,
     "linkedin": LinkedInSource,
+    "remote-com": RemoteComSource,
     "remotive": RemotiveSource,
     "stepstone": StepStoneSource,
 }

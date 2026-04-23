@@ -10,6 +10,11 @@ from job_searcher.reporting import SearchReport
 from job_searcher.search import collect_jobs
 from job_searcher.sources.base import JobSource
 from job_searcher.sources.arbeitsagentur import job_detail_url, parse_date
+from job_searcher.sources.experis import (
+    ExperisJobsParser,
+    canonicalize_job_url as canonicalize_experis_url,
+    search_url as experis_search_url,
+)
 from job_searcher.sources.glassdoor import (
     GlassdoorJobsParser,
     canonicalize_job_url as canonicalize_glassdoor_url,
@@ -17,6 +22,10 @@ from job_searcher.sources.glassdoor import (
 from job_searcher.sources.indeed import (
     IndeedJobsParser,
     canonicalize_job_url as canonicalize_indeed_url,
+)
+from job_searcher.sources.karriere_nrw import (
+    matches_query as karriere_nrw_matches_query,
+    public_job_url as karriere_nrw_public_job_url,
 )
 from job_searcher.sources.kununu import (
     canonicalize_job_url as canonicalize_kununu_url,
@@ -29,6 +38,10 @@ from job_searcher.sources.linkedin import (
     LinkedInJobsParser,
     canonicalize_job_url,
     parse_date as parse_linkedin_date,
+)
+from job_searcher.sources.remote_com import (
+    extract_jobs as extract_remote_com_jobs,
+    search_url as remote_com_search_url,
 )
 from job_searcher.sources.remotive import matches_query, parse_iso_datetime
 from job_searcher.sources.stepstone import (
@@ -59,6 +72,11 @@ class OfficialLinkTests(unittest.TestCase):
                 "https://www.arbeitsagentur.de/jobsuche/jobdetail/10001-1-S", "Acme"
             )
         )
+        self.assertTrue(
+            is_likely_official_application(
+                "https://www.karriere.nrw/stellenausschreibung/abc123", "Acme"
+            )
+        )
 
     def test_rejects_aggregator_links(self) -> None:
         self.assertFalse(
@@ -69,6 +87,12 @@ class OfficialLinkTests(unittest.TestCase):
         )
         self.assertFalse(
             is_likely_official_application("https://www.indeed.com/viewjob?jk=abc123", "Acme")
+        )
+        self.assertFalse(
+            is_likely_official_application(
+                "https://www.experis.de/de/job/it/data-analyst/abc123",
+                "Acme",
+            )
         )
         self.assertFalse(
             is_likely_official_application(
@@ -228,6 +252,53 @@ class SourceMatchingTests(unittest.TestCase):
             "https://www.glassdoor.de/job-listing/data-analyst-acme-JV.htm?jl=123",
         )
 
+    def test_experis_card_parser(self) -> None:
+        parser = ExperisJobsParser()
+        parser.feed(
+            """
+            <div class="job-search-result card">
+              <div class="card-body">
+                <div class="job-actionbar"><div class="date">19/04/2026</div></div>
+                <div class="job-position">
+                  <h2 class="title">
+                    <a href="/de/job/it/data-analyst/abc123">Data Analyst</a>
+                  </h2>
+                </div>
+                <div class="job-details">
+                  <div class="location"><img alt="location icon"/>Berlin</div>
+                </div>
+              </div>
+            </div>
+            """
+        )
+        self.assertEqual(len(parser.cards), 1)
+        self.assertEqual(parser.cards[0].title, "Data Analyst")
+        self.assertEqual(parser.cards[0].location, "Berlin")
+        self.assertEqual(
+            canonicalize_experis_url(parser.cards[0].url),
+            "https://www.experis.de/de/job/it/data-analyst/abc123",
+        )
+        self.assertEqual(
+            experis_search_url(SearchQuery(title="data analyst")),
+            "https://www.experis.de/de/search/beruf/data-analyst",
+        )
+
+    def test_karriere_nrw_helpers(self) -> None:
+        item = {
+            "uuid": "abc123",
+            "titel_der_stelle": "Data Analyst",
+            "ausschreibende_behoerde": "Land NRW",
+            "ort": "Düsseldorf",
+        }
+        self.assertTrue(karriere_nrw_matches_query(item, SearchQuery("data analyst")))
+        self.assertFalse(
+            karriere_nrw_matches_query(item, SearchQuery("data analyst", location="Berlin"))
+        )
+        self.assertEqual(
+            karriere_nrw_public_job_url("abc123"),
+            "https://www.karriere.nrw/stellenausschreibung/abc123",
+        )
+
     def test_kununu_next_data_parser(self) -> None:
         html = """
         <script id="__NEXT_DATA__" type="application/json">
@@ -269,6 +340,26 @@ class SourceMatchingTests(unittest.TestCase):
         self.assertEqual(
             kununu_search_url(SearchQuery(title="data analyst", location="Berlin")),
             "https://www.kununu.com/de/jobs/j-data-analyst/l-state-berlin",
+        )
+
+    def test_remote_com_jobs_data_parser(self) -> None:
+        html = (
+            '<script>self.__next_f.push([1,"'
+            '\\"jobsData\\":{\\"jobs\\":[{\\"title\\":\\"Data Analyst\\",'
+            '\\"slug\\":\\"data-analyst-j1\\",'
+            '\\"applyUrl\\":\\"https://jobs.lever.co/acme/abc\\",'
+            '\\"publishedAt\\":\\"2026-04-17T21:03:05Z\\",'
+            '\\"companyProfile\\":{\\"name\\":\\"Acme\\"},'
+            '\\"hiringLocation\\":{\\"includedLocations\\":[{\\"value\\":{\\"name\\":\\"Germany\\"}}]}}]}}'
+            '"])</script>'
+        )
+        jobs = extract_remote_com_jobs(html)
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0]["title"], "Data Analyst")
+        self.assertEqual(jobs[0]["applyUrl"], "https://jobs.lever.co/acme/abc")
+        self.assertEqual(
+            remote_com_search_url(SearchQuery(title="data analyst")),
+            "https://remote.com/jobs/types-of-remote-jobs/remote-data-analyst-jobs",
         )
 
     def test_stepstone_card_parser(self) -> None:

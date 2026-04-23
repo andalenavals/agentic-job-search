@@ -14,6 +14,7 @@ AGGREGATOR_HOST_PARTS = (
 
 OFFICIAL_HOST_PARTS = (
     "greenhouse.io",
+    "karriere.nrw",
     "lever.co",
     "ashbyhq.com",
     "workdayjobs.com",
