@@ -46,7 +46,7 @@ class KununuSource(JobSource):
             if not isinstance(item, dict):
                 continue
             profile = item.get("profile") if isinstance(item.get("profile"), dict) else {}
-            url = str(item.get("url") or "")
+            url = public_job_url(item, self.endpoint)
             title = str(item.get("title") or "")
             if not url or not title:
                 continue
@@ -91,6 +91,13 @@ def search_url(query: SearchQuery, endpoint: str = "https://www.kununu.com") -> 
         else:
             path = f"{path}/l-{location_slug}"
     return f"{endpoint}{quote(path, safe='/')}"
+
+
+def public_job_url(item: dict[object, object], endpoint: str = "https://www.kununu.com") -> str:
+    job_id = str(item.get("id") or "")
+    if job_id:
+        return f"{endpoint}/de/job/{job_id}"
+    return urljoin(endpoint, str(item.get("url") or ""))
 
 
 def slugify(value: str) -> str:

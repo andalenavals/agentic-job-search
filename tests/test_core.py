@@ -22,6 +22,7 @@ from job_searcher.sources.kununu import (
     canonicalize_job_url as canonicalize_kununu_url,
     extract_jobs as extract_kununu_jobs,
     parse_date as parse_kununu_date,
+    public_job_url as kununu_public_job_url,
     search_url as kununu_search_url,
 )
 from job_searcher.sources.linkedin import (
@@ -236,6 +237,7 @@ class SourceMatchingTests(unittest.TestCase):
               "searchJobs": {
                 "jobs": [
                   {
+                    "id": "abc123",
                     "title": "Data Analyst",
                     "city": "Berlin",
                     "region": "Berlin",
@@ -254,8 +256,12 @@ class SourceMatchingTests(unittest.TestCase):
         self.assertEqual(len(jobs), 1)
         self.assertEqual(jobs[0]["title"], "Data Analyst")
         self.assertEqual(
-            canonicalize_kununu_url("https://www.kununu.com/job-postings/de/abc123?foo=bar"),
-            "https://www.kununu.com/job-postings/de/abc123",
+            kununu_public_job_url(jobs[0]),
+            "https://www.kununu.com/de/job/abc123",
+        )
+        self.assertEqual(
+            canonicalize_kununu_url("https://www.kununu.com/de/job/abc123?foo=bar"),
+            "https://www.kununu.com/de/job/abc123",
         )
         parsed = parse_kununu_date(jobs[0]["postedAt"])
         self.assertIsNotNone(parsed)
