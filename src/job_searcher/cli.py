@@ -87,19 +87,27 @@ def main(argv: list[str] | None = None) -> int:
         else:
             sys.stdout.write(rendered)
         if args.email_to:
-            settings = email_settings_from_env(from_addr=args.email_from)
-            message = build_digest_email(
-                flat_rows,
-                query_title=args.title,
-                to_addr=args.email_to,
-                from_addr=settings.from_addr,
-                from_name=settings.from_name,
-                subject=args.email_subject,
-                limit=args.email_top,
-                sort_by=args.email_sort,
-            )
-            send_email(message, settings)
-            print(f"Sent top {args.email_top} job digest to {args.email_to}", file=sys.stderr)
+            try:
+                settings = email_settings_from_env(from_addr=args.email_from)
+                message = build_digest_email(
+                    flat_rows,
+                    query_title=args.title,
+                    to_addr=args.email_to,
+                    from_addr=settings.from_addr,
+                    from_name=settings.from_name,
+                    subject=args.email_subject,
+                    limit=args.email_top,
+                    sort_by=args.email_sort,
+                )
+                send_email(message, settings)
+            except Exception as exc:
+                print(
+                    f"warning: could not send email to {args.email_to}: {exc}. "
+                    "The report was still produced.",
+                    file=sys.stderr,
+                )
+            else:
+                print(f"Sent top {args.email_top} job digest to {args.email_to}", file=sys.stderr)
         return 0
 
     report = SearchReport()

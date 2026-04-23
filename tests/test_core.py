@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import io
+import tempfile
 import unittest
 from datetime import datetime, timezone
+from pathlib import Path
+from unittest.mock import patch
 
 from job_searcher.debugging import (
     DebuggedJob,
@@ -19,8 +23,8 @@ from job_searcher.debugging import (
     html_to_text,
     source_label,
 )
-from job_searcher.cli import normalize_location, normalize_source_names
-from job_searcher.emailing import build_digest_email, select_digest_jobs
+from job_searcher.cli import main as cli_main, normalize_location, normalize_source_names
+from job_searcher.emailing import EmailSettings, build_digest_email, select_digest_jobs
 from job_searcher.exporters import to_csv, to_markdown
 from job_searcher.matching import MatchResult, ProfileMatcher, parse_llm_match_response, semantic_match_score
 from job_searcher.models import JobPosting, SearchQuery
@@ -351,6 +355,45 @@ class CliTests(unittest.TestCase):
         self.assertIsNone(normalize_location("all"))
         self.assertIsNone(normalize_location(" ALL "))
         self.assertEqual(normalize_location("Berlin"), "Berlin")
+
+    def test_debug_report_still_writes_when_email_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "report.md"
+            stderr = io.StringIO()
+            with (
+                patch("job_searcher.cli.build_sources", return_value=[]),
+                patch(
+                    "job_searcher.cli.email_settings_from_env",
+                    return_value=EmailSettings(
+                        host="smtp.example.com",
+                        port=587,
+                        from_addr="from@example.com",
+                    ),
+                ),
+                patch("job_searcher.cli.send_email", side_effect=RuntimeError("smtp down")),
+                patch("sys.stderr", new=stderr),
+            ):
+                exit_code = cli_main(
+                    [
+                        "--title",
+                        "Data",
+                        "--source",
+                        "all",
+                        "--location",
+                        "all",
+                        "--debug-links",
+                        "--include-unverified",
+                        "--email-to",
+                        "to@example.com",
+                        "--output",
+                        str(output_path),
+                    ]
+                )
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(output_path.exists())
+            self.assertIn("# Job Link Debug Report", output_path.read_text(encoding="utf-8"))
+            self.assertIn("warning: could not send email to to@example.com", stderr.getvalue())
+            self.assertIn("The report was still produced.", stderr.getvalue())
 
 
 class DebuggingTests(unittest.TestCase):
