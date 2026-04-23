@@ -86,7 +86,7 @@ PYTHONPATH=src python3 -m job_searcher --title "product manager" --output result
 PYTHONPATH=src python3 -m job_searcher --title "product manager" --format csv --output results.csv
 ```
 
-Helper bash entry points live in [`scripts/`](/Users/andres/git_repos/agentic-job-search/scripts), and local-only profile / SMTP inputs live in [`data/`](/Users/andres/git_repos/agentic-job-search/data). Use the committed example files as templates, and edit `data/profile.txt` plus `data/email.env` for your machine-specific values.
+Helper bash entry points live in [`scripts/`](/Users/andres/git_repos/agentic-job-search/scripts), and local-only profile / SMTP inputs live in [`data/`](/Users/andres/git_repos/agentic-job-search/data). The scripts use `data/profile.txt` and `data/email.env`.
 
 The two main helper scripts are:
 

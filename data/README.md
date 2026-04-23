@@ -7,11 +7,6 @@ Use this folder for local-only inputs such as:
 
 The repo ignores those two files so credentials and personal profile data do not get committed.
 
-Reference templates:
-
-- `profile.example.txt`
-- `email.env.example`
-
 The default helper scripts now assume:
 
 - all sources
