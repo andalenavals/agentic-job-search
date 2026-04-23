@@ -3,6 +3,16 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timezone
 
+from job_searcher.debugging import (
+    DebuggedJob,
+    LinkVerification,
+    SourceDebugResult,
+    build_verification,
+    content_mentions_job,
+    debug_report_to_markdown,
+    debug_sources,
+    source_label,
+)
 from job_searcher.exporters import to_csv, to_markdown
 from job_searcher.models import JobPosting, SearchQuery
 from job_searcher.official_links import is_likely_official_application
@@ -223,6 +233,84 @@ class SearchTests(unittest.TestCase):
         )
         results = collect_jobs([StaticSource([older, newer])], SearchQuery(title="Engineer"))
         self.assertEqual([job.company for job in results], ["Acme", "Beta"])
+
+
+class DebuggingTests(unittest.TestCase):
+    def test_debug_sources_verifies_each_source_limit(self) -> None:
+        jobs = [
+            JobPosting("Data Analyst", "Acme", "Berlin", "test", "https://jobs.lever.co/acme/1"),
+            JobPosting("Data Engineer", "Acme", "Berlin", "test", "https://jobs.lever.co/acme/2"),
+        ]
+
+        def fake_verifier(job: JobPosting, query: SearchQuery, timeout: int) -> LinkVerification:
+            return build_verification(
+                url=job.best_url,
+                final_url=job.best_url,
+                reachable=True,
+                status_code=200,
+                content_type="text/html",
+                official_like=True,
+                title_found=True,
+            )
+
+        results = debug_sources(
+            [StaticSource(jobs)],
+            SearchQuery(title="data analyst", include_unverified=True),
+            per_source_limit=1,
+            verifier=fake_verifier,
+        )
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].source, "static")
+        self.assertEqual(len(results[0].jobs), 1)
+        self.assertEqual(results[0].jobs[0].verification.verdict, "verified")
+
+    def test_source_label_includes_company_token(self) -> None:
+        source = StaticSource([])
+        source.company_token = "acme"
+        self.assertEqual(source_label(source), "static:acme")
+
+    def test_debug_report_markdown(self) -> None:
+        job = JobPosting("Data Analyst", "Acme", "Berlin", "test", "https://jobs.lever.co/acme/1")
+        verification = build_verification(
+            url=job.best_url,
+            final_url=job.best_url,
+            reachable=True,
+            status_code=200,
+            content_type="text/html",
+            official_like=True,
+            title_found=True,
+        )
+        report = debug_report_to_markdown(
+            [
+                SourceDebugResult(
+                    source="test",
+                    warnings=(),
+                    jobs=(DebuggedJob(job=job, verification=verification),),
+                )
+            ]
+        )
+        self.assertIn("## test", report)
+        self.assertIn("verified", report)
+        self.assertIn("[open](https://jobs.lever.co/acme/1)", report)
+
+    def test_verification_verdicts(self) -> None:
+        self.assertEqual(
+            build_verification("https://x", "https://x", False, 404, "", False, False).verdict,
+            "missing",
+        )
+        self.assertEqual(
+            build_verification("https://x", "https://x", True, 200, "", True, True).verdict,
+            "verified",
+        )
+        self.assertEqual(
+            build_verification("https://x", "https://x", True, 200, "", False, False).verdict,
+            "suspicious",
+        )
+
+    def test_content_mentions_job(self) -> None:
+        job = JobPosting("Senior Data Analyst", "Acme", "Berlin", "test", "https://jobs/acme")
+        self.assertTrue(content_mentions_job("Join us as a Senior Data Analyst.", job, SearchQuery("data analyst")))
+        self.assertFalse(content_mentions_job("Join us as a Product Manager.", job, SearchQuery("data analyst")))
 
 
 class ExportTests(unittest.TestCase):

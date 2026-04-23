@@ -86,6 +86,13 @@ During early source development, include engine/source links that are not yet ve
 PYTHONPATH=src python3 -m job_searcher --title "engineer" --include-unverified
 ```
 
+Debug link quality source by source. This mode asks each source for links, takes the first five by default, fetches each link, follows redirects, and reports whether the page exists, still looks like an official application URL, and contains the job title text:
+
+```bash
+PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --debug-links
+PYTHONPATH=src python3 -m job_searcher --title "data analyst" --source linkedin --debug-links --debug-limit 5
+```
+
 ## Source Notes
 
 Some engines named in the product idea are intentionally placeholders in the MVP:

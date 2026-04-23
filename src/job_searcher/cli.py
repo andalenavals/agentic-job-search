@@ -4,6 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from job_searcher.debugging import debug_report_to_markdown, debug_sources
 from job_searcher.exporters import to_csv, to_markdown
 from job_searcher.models import SearchQuery
 from job_searcher.reporting import SearchReport
@@ -34,7 +35,7 @@ def main(argv: list[str] | None = None) -> int:
         location=args.location,
         remote=args.remote,
         limit=args.limit,
-        include_unverified=args.include_unverified,
+        include_unverified=args.include_unverified or args.debug_links,
         greenhouse_companies=tuple(args.greenhouse),
         lever_companies=tuple(args.lever),
         ashby_companies=tuple(args.ashby),
@@ -42,6 +43,20 @@ def main(argv: list[str] | None = None) -> int:
         smartrecruiters_companies=tuple(args.smartrecruiters),
         workday_sites=tuple(args.workday),
     )
+    if args.debug_links:
+        results = debug_sources(
+            sources,
+            query,
+            per_source_limit=args.debug_limit,
+            timeout=args.debug_timeout,
+        )
+        rendered = debug_report_to_markdown(results)
+        if args.output:
+            Path(args.output).write_text(rendered, encoding="utf-8")
+        else:
+            sys.stdout.write(rendered)
+        return 0
+
     report = SearchReport()
     jobs = collect_jobs(sources, query, report)
     for warning in report.warnings:
@@ -75,6 +90,23 @@ def build_parser() -> argparse.ArgumentParser:
         "--include-unverified",
         action="store_true",
         help="Include source links that do not look like official company application pages.",
+    )
+    parser.add_argument(
+        "--debug-links",
+        action="store_true",
+        help="Search each source separately and verify the first links by fetching them.",
+    )
+    parser.add_argument(
+        "--debug-limit",
+        type=int,
+        default=5,
+        help="Number of links to verify per source in --debug-links mode.",
+    )
+    parser.add_argument(
+        "--debug-timeout",
+        type=int,
+        default=10,
+        help="Seconds to wait while verifying each debug link.",
     )
     parser.add_argument(
         "--source",
