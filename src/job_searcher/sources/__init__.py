@@ -11,6 +11,7 @@ from .google import GoogleSource
 from .greenhouse import GreenhouseSource
 from .indeed import IndeedSource
 from .interamt import InteramtSource
+from .jobvector import JobvectorSource
 from .karriere_nrw import KarriereNrwSource
 from .kununu import KununuSource
 from .lever import LeverSource
@@ -34,6 +35,7 @@ DEFAULT_SOURCES = {
     "google": GoogleSource,
     "indeed": IndeedSource,
     "interamt": InteramtSource,
+    "jobvector": JobvectorSource,
     "karriere-nrw": KarriereNrwSource,
     "kununu": KununuSource,
     "linkedin": LinkedInSource,
@@ -52,6 +54,7 @@ DEFAULT_SOURCE_NAMES = (
     "glassdoor",
     "indeed",
     "interamt",
+    "jobvector",
     "karriere-nrw",
     "kununu",
     "linkedin",

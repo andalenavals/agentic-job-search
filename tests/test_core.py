@@ -68,6 +68,13 @@ from job_searcher.sources.indeed import (
     canonicalize_job_url as canonicalize_indeed_url,
 )
 from job_searcher.sources.interamt import InteramtJobsParser, is_job_href as interamt_is_job_href
+from job_searcher.sources.jobvector import (
+    JobvectorJobsParser,
+    canonicalize_job_url as canonicalize_jobvector_url,
+    matches_query as jobvector_matches_query,
+    parse_date as parse_jobvector_date,
+    search_url as jobvector_search_url,
+)
 from job_searcher.sources.karriere_nrw import (
     matches_query as karriere_nrw_matches_query,
     public_job_url as karriere_nrw_public_job_url,
@@ -862,6 +869,51 @@ class SourceMatchingTests(unittest.TestCase):
         )
         self.assertTrue(interamt_is_job_href("./stellenangebot/123"))
         self.assertFalse(interamt_is_job_href("./stellensuche?0"))
+
+    def test_jobvector_parser(self) -> None:
+        parser = JobvectorJobsParser()
+        parser.feed(
+            """
+            <article data-jobid="7724d1812bfab484" class="list-item-job shortview hover">
+              <a href="https://www.jobvector.de/job/informatiker-7724d1812bfab484/" class="vacancy-title-anchor">
+                <div class="title"><h2>Data Analyst (w/m/d)</h2></div>
+              </a>
+              <a class="company-name info-item">
+                <span class="company-name-text">KIND GmbH &amp; Co. KG</span>
+              </a>
+              <div class="locations-wrapper">
+                <div class="locations-loop-inside-wrapper">Burgwedel, Niedersachsen</div>
+              </div>
+              <div class="link-wrapper">
+                <a href="https://www.jobvector.de/job/informatiker-7724d1812bfab484/">
+                  <span class="date inline-item">
+                    <div class="icon-wrapper">
+                      <svg data-icon="calendar-days"></svg>
+                    </div>
+                    <span>16.04.2026</span>
+                  </span>
+                </a>
+              </div>
+            </article>
+            """
+        )
+        self.assertEqual(len(parser.cards), 1)
+        self.assertEqual(parser.cards[0].title, "Data Analyst (w/m/d)")
+        self.assertEqual(parser.cards[0].company, "KIND GmbH & Co. KG")
+        self.assertEqual(parser.cards[0].location, "Burgwedel, Niedersachsen")
+        self.assertEqual(
+            canonicalize_jobvector_url(parser.cards[0].url),
+            "https://www.jobvector.de/job/informatiker-7724d1812bfab484/",
+        )
+        parsed = parse_jobvector_date(parser.cards[0].published_at)
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed.year, 2026)
+        self.assertEqual(
+            jobvector_search_url(SearchQuery(title="data analyst")),
+            "https://www.jobvector.de/jobs/data+analyst/",
+        )
+        self.assertTrue(jobvector_matches_query("Data Analyst (w/m/d)", "Acme", SearchQuery("data analyst")))
+        self.assertFalse(jobvector_matches_query("Business Analyst", "Acme", SearchQuery("data analyst")))
 
     def test_ashby_helpers(self) -> None:
         payload = {
