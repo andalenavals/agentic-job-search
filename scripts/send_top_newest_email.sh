@@ -4,7 +4,6 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-PROFILE_FILE="${PROFILE_FILE:-data/profile.txt}"
 EMAIL_ENV_FILE="${EMAIL_ENV_FILE:-data/email.env}"
 
 if [[ -f "$EMAIL_ENV_FILE" ]]; then
@@ -23,11 +22,9 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3 -m job_searcher \
   --source all \
   --include-unverified \
   --debug-links \
-  --debug-limit "${DEBUG_LIMIT:-5}" \
+  --debug-limit "${DEBUG_LIMIT:-10}" \
   --debug-timeout "${DEBUG_TIMEOUT:-8}" \
-  --profile-file "$PROFILE_FILE" \
-  --no-llm-match \
   --email-to "$EMAIL_TO" \
   --email-top "${EMAIL_TOP:-5}" \
-  --email-sort "${EMAIL_SORT:-match}" \
-  --output "${OUTPUT_PATH:-reports/gold-test-data.md}"
+  --email-sort newest \
+  --output "${OUTPUT_PATH:-reports/top-newest-email.md}"

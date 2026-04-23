@@ -88,6 +88,11 @@ PYTHONPATH=src python3 -m job_searcher --title "product manager" --format csv --
 
 Helper bash entry points live in [`scripts/`](/Users/andres/git_repos/agentic-job-search/scripts), and local-only profile / SMTP inputs live in [`data/`](/Users/andres/git_repos/agentic-job-search/data). Use the committed example files as templates, and edit `data/profile.txt` plus `data/email.env` for your machine-specific values.
 
+The two main helper scripts are:
+
+- [`send_top_llm_match_email.sh`](/Users/andres/git_repos/agentic-job-search/scripts/send_top_llm_match_email.sh): checks all sources, verifies 10 jobs per source, ranks by LLM/profile match, and emails the top 5 links.
+- [`send_top_newest_email.sh`](/Users/andres/git_repos/agentic-job-search/scripts/send_top_newest_email.sh): checks all sources, verifies 10 jobs per source, sorts by newest posting, and emails the top 5 links.
+
 During early source development, include engine/source links that are not yet verified as official company application pages:
 
 ```bash

@@ -11,3 +11,11 @@ Reference templates:
 
 - `profile.example.txt`
 - `email.env.example`
+
+The default helper scripts now assume:
+
+- all sources
+- `10` checked jobs per source
+- `5` emailed links
+- one script for LLM/profile match ranking
+- one script for newest-job ranking

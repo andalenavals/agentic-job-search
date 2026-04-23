@@ -598,8 +598,8 @@ class DebuggingTests(unittest.TestCase):
             sort_by="match",
         )
         body = message.get_content()
-        self.assertIn("Data Analyst", body)
-        self.assertIn("LLM match: 90/100 - Strong fit", body)
+        self.assertIn("# Top job links for: Data", body)
+        self.assertIn("https://jobs.example/1", body)
         self.assertNotIn("Sales Manager", body)
 
     def test_verification_verdicts(self) -> None:

@@ -78,36 +78,18 @@ def build_digest_email(
     message = EmailMessage()
     message["To"] = to_addr
     message["From"] = formataddr((from_name, from_addr))
-    message["Subject"] = subject or f"Top {len(selected)} job matches for {query_title}"
+    message["Subject"] = subject or f"Top {len(selected)} job links for {query_title} ({sort_by})"
     message.set_content(render_digest_text(selected, query_title, sort_by))
     return message
 
 
 def render_digest_text(rows: list[FlatDebugJob], query_title: str, sort_by: str) -> str:
-    lines = [
-        f"Top job results for: {query_title}",
-        f"Sorted by: {sort_by}",
-        "",
-    ]
+    lines = [f"# Top job links for: {query_title}", f"# Sorted by: {sort_by}", ""]
     if not rows:
-        lines.append("No job results were available.")
+        lines.append("# No job results were available.")
         return "\n".join(lines)
-    for index, row in enumerate(rows, start=1):
-        final_url = row.verification.final_url or row.verification.url
-        lines.extend(
-            [
-                f"{index}. {row.job.title}",
-                f"Company: {row.job.company or 'Unknown'}",
-                f"Source: {row.source}",
-                f"Verdict: {row.verification.verdict}",
-                f"Semantic match: {semantic_label(row)}",
-                f"LLM match: {llm_label(row)}",
-                f"Published: {row.job.published_at.date().isoformat() if row.job.published_at else 'unknown'}",
-                f"Link: {final_url}",
-                f"Description: {short_description(row.description)}",
-                "",
-            ]
-        )
+    for row in rows:
+        lines.append(row.verification.final_url or row.verification.url)
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -124,12 +106,6 @@ def send_email(message: EmailMessage, settings: EmailSettings) -> None:
         smtp.send_message(message)
 
 
-def semantic_label(row: FlatDebugJob) -> str:
-    if not row.match:
-        return "not-run"
-    return f"{row.match.semantic_score:.1f}/100"
-
-
 def published_timestamp(row: FlatDebugJob) -> float:
     if not row.job.published_at:
         return 0.0
@@ -137,20 +113,3 @@ def published_timestamp(row: FlatDebugJob) -> float:
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
     return value.timestamp()
-
-
-def llm_label(row: FlatDebugJob) -> str:
-    if not row.match:
-        return "not-run"
-    if row.match.llm_score is None:
-        return row.match.llm_error or "not-run"
-    if row.match.llm_reason:
-        return f"{row.match.llm_score}/100 - {row.match.llm_reason}"
-    return f"{row.match.llm_score}/100"
-
-
-def short_description(value: str, max_chars: int = 700) -> str:
-    compacted = " ".join(value.split())
-    if len(compacted) <= max_chars:
-        return compacted
-    return compacted[: max_chars - 1].rstrip() + "…"
