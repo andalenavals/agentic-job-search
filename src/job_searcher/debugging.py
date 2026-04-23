@@ -233,7 +233,7 @@ def debug_report_to_flat_markdown(
 ) -> str:
     total_links = sum(len(result.jobs) for result in results)
     lines = [
-        "# Job Search Cold Test",
+        "# Job Search Gold Test",
         "",
         f"- Query title: `{escape_md(title)}`",
         "- Location: any",

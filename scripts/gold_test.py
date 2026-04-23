@@ -10,7 +10,7 @@ from job_searcher.sources import DEFAULT_SOURCES, PLACEHOLDER_SOURCES, build_sou
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run a live cold test across all selectable job sources."
+        description="Run a live gold test across all selectable job sources."
     )
     parser.add_argument("--title", default="Data", help="Job title query.")
     parser.add_argument(
@@ -27,7 +27,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--output",
-        default="reports/cold-test-data.md",
+        default="reports/gold-test-data.md",
         help="Markdown report path.",
     )
     args = parser.parse_args()
@@ -54,7 +54,7 @@ def main() -> int:
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(report, encoding="utf-8")
     print(report)
-    print(f"Wrote cold test report to {output}")
+    print(f"Wrote gold test report to {output}")
     return 0
 
 

@@ -316,7 +316,7 @@ class DebuggingTests(unittest.TestCase):
             title="Data",
             per_source_limit=5,
         )
-        self.assertIn("# Job Search Cold Test", report)
+        self.assertIn("# Job Search Gold Test", report)
         self.assertIn("| test | verified | 200 | yes | yes | Data Analyst | Acme |", report)
 
     def test_verification_verdicts(self) -> None:
