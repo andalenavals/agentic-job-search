@@ -19,6 +19,11 @@ from job_searcher.sources.glassdoor import (
     GlassdoorJobsParser,
     canonicalize_job_url as canonicalize_glassdoor_url,
 )
+from job_searcher.sources.google import (
+    build_google_query,
+    clean_title as clean_google_title,
+    company_from_url as google_company_from_url,
+)
 from job_searcher.sources.indeed import (
     IndeedJobsParser,
     canonicalize_job_url as canonicalize_indeed_url,
@@ -251,6 +256,14 @@ class SourceMatchingTests(unittest.TestCase):
             canonicalize_glassdoor_url(parser.cards[0].url),
             "https://www.glassdoor.de/job-listing/data-analyst-acme-JV.htm?jl=123",
         )
+
+    def test_google_query_helpers(self) -> None:
+        query = build_google_query(SearchQuery(title="data analyst", location="Berlin"))
+        self.assertIn("data analyst", query)
+        self.assertIn("Berlin", query)
+        self.assertIn("-site:linkedin.com", query)
+        self.assertEqual(clean_google_title("Data Analyst | Acme Careers"), "Data Analyst")
+        self.assertEqual(google_company_from_url("https://jobs.lever.co/acme/abc"), "lever")
 
     def test_experis_card_parser(self) -> None:
         parser = ExperisJobsParser()

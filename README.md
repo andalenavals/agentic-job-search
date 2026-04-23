@@ -20,6 +20,7 @@ Implemented:
   - Arbeitnow public API.
   - Experis public job cards as experimental, unverified source links.
   - Glassdoor public job cards as experimental, unverified source links.
+  - Google Programmable Search JSON API as optional configured source.
   - Indeed public search cards as experimental, unverified source links.
   - Karriere.NRW public OpenData API.
   - Kununu public job listings as experimental, unverified source links.
@@ -96,6 +97,14 @@ Remote.com returns official ATS apply links when available. Use `--remote` for r
 
 ```bash
 PYTHONPATH=src python3 -m job_searcher --title "data analyst" --source remote-com --remote
+```
+
+Google uses the official Programmable Search JSON API. Configure it with environment variables before using `--source google`:
+
+```bash
+export GOOGLE_SEARCH_API_KEY="..."
+export GOOGLE_SEARCH_ENGINE_ID="..."
+PYTHONPATH=src python3 -m job_searcher --title "data analyst" --location Berlin --source google --limit 5
 ```
 
 Karriere.NRW uses the public OpenData API and is included in strict mode:

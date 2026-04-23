@@ -4,6 +4,7 @@ from .arbeitsagentur import ArbeitsagenturSource
 from .arbeitnow import ArbeitnowSource
 from .experis import ExperisSource
 from .glassdoor import GlassdoorSource
+from .google import GoogleSource
 from .greenhouse import GreenhouseSource
 from .indeed import IndeedSource
 from .karriere_nrw import KarriereNrwSource
@@ -20,6 +21,7 @@ DEFAULT_SOURCES = {
     "arbeitnow": ArbeitnowSource,
     "experis": ExperisSource,
     "glassdoor": GlassdoorSource,
+    "google": GoogleSource,
     "indeed": IndeedSource,
     "karriere-nrw": KarriereNrwSource,
     "kununu": KununuSource,
@@ -28,6 +30,20 @@ DEFAULT_SOURCES = {
     "remotive": RemotiveSource,
     "stepstone": StepStoneSource,
 }
+
+DEFAULT_SOURCE_NAMES = (
+    "agentur",
+    "arbeitnow",
+    "experis",
+    "glassdoor",
+    "indeed",
+    "karriere-nrw",
+    "kununu",
+    "linkedin",
+    "remote-com",
+    "remotive",
+    "stepstone",
+)
 
 OPTIONAL_COMPANY_SOURCES = {
     "greenhouse": GreenhouseSource,

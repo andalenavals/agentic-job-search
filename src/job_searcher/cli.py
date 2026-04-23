@@ -8,14 +8,14 @@ from job_searcher.exporters import to_csv, to_markdown
 from job_searcher.models import SearchQuery
 from job_searcher.reporting import SearchReport
 from job_searcher.search import collect_jobs
-from job_searcher.sources import DEFAULT_SOURCES, PLACEHOLDER_SOURCES, build_sources
+from job_searcher.sources import DEFAULT_SOURCE_NAMES, DEFAULT_SOURCES, PLACEHOLDER_SOURCES, build_sources
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    source_names = args.source or list(DEFAULT_SOURCES)
+    source_names = args.source or list(DEFAULT_SOURCE_NAMES)
     try:
         sources = build_sources(source_names, tuple(args.greenhouse), tuple(args.lever))
     except ValueError as exc:
