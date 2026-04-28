@@ -3,6 +3,8 @@
 CLI job search automation for collecting job postings, checking link quality,
 ranking against a candidate profile, and optionally emailing curated results.
 
+Project page: [github.com/andalenavals/agentic-job-search](https://github.com/andalenavals/agentic-job-search)
+
 The package currently supports two complementary workflows:
 
 1. standard search output for likely official application links
