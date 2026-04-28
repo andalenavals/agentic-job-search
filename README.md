@@ -291,6 +291,9 @@ SMTP settings:
 
 Sphinx source files live in [`docs/`](/Users/andres/git_repos/agentic-job-search/docs).
 
+GitHub Pages documentation is published at:
+[andalenavals.github.io/agentic-job-search](https://andalenavals.github.io/agentic-job-search/)
+
 ## Development
 
 Run the unit suite:
